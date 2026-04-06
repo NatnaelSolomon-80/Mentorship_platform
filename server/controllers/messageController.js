@@ -1,5 +1,6 @@
 const Message = require('../models/Message');
 const Enrollment = require('../models/Enrollment');
+const JobApplication = require('../models/JobApplication');
 
 // @desc   Send a message
 const sendMessage = async (req, res) => {
@@ -66,6 +67,20 @@ const getContacts = async (req, res) => {
 
     enrollments.forEach(e => {
       const other = req.user.role === 'student' ? e.mentorId : e.studentId;
+      if (other && !contactMap.has(other._id.toString())) {
+        contactMap.set(other._id.toString(), { user: other, lastMessage: null });
+      }
+    });
+
+    // Bring in scheduled ATS pairs
+    const eligibleApplicationStatuses = ['interview_scheduled', 'interview_completed', 'offer_sent', 'offer_accepted', 'hired'];
+    const jobApplications = await JobApplication.find(
+      req.user.role === 'student' ? { studentId: req.user._id, status: { $in: eligibleApplicationStatuses } } :
+      req.user.role === 'employer' ? { employerId: req.user._id, status: { $in: eligibleApplicationStatuses } } : {}
+    ).populate('studentId employerId', 'name avatar role');
+
+    jobApplications.forEach(app => {
+      const other = req.user.role === 'student' ? app.employerId : app.studentId;
       if (other && !contactMap.has(other._id.toString())) {
         contactMap.set(other._id.toString(), { user: other, lastMessage: null });
       }

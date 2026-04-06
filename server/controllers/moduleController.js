@@ -1,5 +1,7 @@
 const Module = require('../models/Module');
 const Course = require('../models/Course');
+const Enrollment = require('../models/Enrollment');
+const { createNotification } = require('./notificationController');
 
 // @desc   Get modules for a course
 // @route  GET /api/modules/course/:courseId
@@ -28,9 +30,25 @@ const createModule = async (req, res) => {
     }
 
     const module = await Module.create({ courseId, title, order });
-    // Add to course modules array
     course.modules.push(module._id);
     await course.save();
+
+    // ── Notify all enrolled students ──
+    try {
+      const enrollments = await Enrollment.find({ courseId }).select('studentId');
+      await Promise.all(enrollments.map(e =>
+        createNotification({
+          userId: e.studentId,
+          type: 'new_module',
+          title: `New module added to "${course.title}"`,
+          message: `📚 A new module "${title}" is now available in your course. Start learning!`,
+          link: `/student/course/${courseId}`,
+          metadata: { courseId, moduleId: module._id },
+        })
+      ));
+    } catch (notifErr) {
+      console.error('Module notification failed:', notifErr.message);
+    }
 
     res.status(201).json({ success: true, data: module });
   } catch (error) {

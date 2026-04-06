@@ -16,6 +16,8 @@ const userSchema = new mongoose.Schema({
   bio: { type: String, default: '' },
   skills: [{ type: String }],
   yearsOfExperience: { type: Number, default: 0 },
+  githubUrl: { type: String, default: '' },
+  portfolioUrl: { type: String, default: '' },
   rating: { type: Number, default: 0 },
   reviewCount: { type: Number, default: 0 },
   // Onboarding flow for mentor & employer

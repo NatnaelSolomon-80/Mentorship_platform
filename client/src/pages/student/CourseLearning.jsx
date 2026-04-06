@@ -33,6 +33,7 @@ const CourseLearning = () => {
   const [ratingValue, setRatingValue] = useState(0);
   const [ratingComment, setRatingComment] = useState('');
   const [hasReviewed, setHasReviewed] = useState(false);
+  const [videoProgressOk, setVideoProgressOk] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -93,9 +94,28 @@ const CourseLearning = () => {
     return true;
   };
 
+  const isLessonUnlocked = (modIndex, lessonIndex) => {
+    if (!isModuleUnlocked(modIndex)) return false;
+    if (lessonIndex === 0) return true;
+    
+    const currentMod = modules[modIndex];
+    if (!currentMod) return false;
+    
+    // Previous lesson must be completed to unlock the current one
+    const prevLesson = currentMod.lessons[lessonIndex - 1];
+    return prevLesson ? isLessonDone(prevLesson._id) : false;
+  };
+
   const completedModulesCount = modules.filter((m) => isModuleDone(m._id)).length;
   const totalModules = modules.length;
-  const progressPct = totalModules > 0 ? Math.round((completedModulesCount / totalModules) * 100) : 0;
+  
+  // Calculate granular progress based on individual lessons
+  const totalLessons = modules.reduce((acc, mod) => acc + (mod.lessons?.length || 0), 0);
+  const completedLessonsCount = modules.reduce((acc, mod) => {
+    return acc + (mod.lessons?.filter(l => isLessonDone(l._id)).length || 0);
+  }, 0);
+  const progressPct = totalLessons > 0 ? Math.round((completedLessonsCount / totalLessons) * 100) : 0;
+  
   const finalTest = tests.find((t) => t.type === 'final');
   const finalTestPassed = results.some((r) => (r.testId?._id || r.testId) === finalTest?._id && r.passed);
   const canRequestCert = progressPct === 100 && (!finalTest || finalTestPassed);
@@ -229,7 +249,7 @@ const CourseLearning = () => {
               <div style={{ height: 8, background: '#e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${progressPct}%`, background: 'linear-gradient(90deg, #2d6a4f, #52b788)', borderRadius: 8, transition: 'width 0.5s ease' }} />
               </div>
-              <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 6 }}>{completedModulesCount}/{totalModules} modules completed</p>
+              <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 6 }}>{completedLessonsCount}/{totalLessons} lessons completed • {completedModulesCount}/{totalModules} modules finished</p>
             </div>
           </div>
 
@@ -252,6 +272,19 @@ const CourseLearning = () => {
                       controlsList="nodownload"
                       style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                       title={activeLesson.title}
+                      onTimeUpdate={(e) => {
+                        if (!videoProgressOk && e.target.duration > 0) {
+                          if (e.target.currentTime / e.target.duration >= 0.75) {
+                            setVideoProgressOk(true);
+                          }
+                        }
+                      }}
+                      onEnded={() => {
+                        setVideoProgressOk(true);
+                        if (!isLessonDone(activeLesson._id)) {
+                          handleMarkLesson(activeLesson._id);
+                        }
+                      }}
                     />
                   )}
                 </div>
@@ -264,23 +297,103 @@ const CourseLearning = () => {
                   <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1a2e24', margin: 0 }}>{activeLesson.title}</h2>
                 </div>
 
-                {(activeLesson.type === 'pdf' || activeLesson.type === 'note' || activeLesson.type === 'link') && (
-                  <a href={activeLesson.contentUrl} target="_blank" rel="noopener noreferrer"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 20px', borderRadius: 12, background: 'linear-gradient(135deg, #2d6a4f, #1a4731)', color: '#fff', fontWeight: 600, fontSize: 14, textDecoration: 'none', transition: 'all 0.2s' }}>
-                    <ExternalLink size={16} />
-                    {activeLesson.type === 'pdf' ? 'Open PDF' : activeLesson.type === 'link' ? 'Open Link' : 'View Note'}
-                  </a>
+                {/* ─── PDF / Note embedded viewer ─── */}
+                {activeLesson.type === 'pdf' && (
+                  <div style={{ marginBottom: 16 }}>
+                    {/* Action bar */}
+                    <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+                      <a
+                        href={activeLesson.contentUrl}
+                        download
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 12, background: 'linear-gradient(135deg, #2d6a4f, #1a4731)', color: '#fff', fontWeight: 600, fontSize: 13, textDecoration: 'none' }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        Download PDF
+                      </a>
+                      <a
+                        href={activeLesson.contentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 12, background: '#f3f4f6', color: '#374151', fontWeight: 600, fontSize: 13, textDecoration: 'none', border: '1px solid #e5e7eb' }}
+                      >
+                        <ExternalLink size={14} /> Open in New Tab
+                      </a>
+                    </div>
+                    {/* Embedded PDF iframe */}
+                    <div style={{ borderRadius: 14, overflow: 'hidden', border: '1.5px solid #e5e7eb', background: '#f9fafb' }}>
+                      <iframe
+                        src={activeLesson.contentUrl + '#toolbar=1&navpanes=0'}
+                        title={activeLesson.title}
+                        style={{ width: '100%', height: 620, border: 'none', display: 'block' }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* ─── Note / text viewer ─── */}
+                {activeLesson.type === 'note' && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+                      <a
+                        href={activeLesson.contentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 12, background: 'linear-gradient(135deg, #2d6a4f, #1a4731)', color: '#fff', fontWeight: 600, fontSize: 13, textDecoration: 'none' }}
+                      >
+                        <ExternalLink size={14} /> Open Full Note
+                      </a>
+                    </div>
+                    <div style={{ borderRadius: 14, overflow: 'hidden', border: '1.5px solid #e5e7eb', background: '#f9fafb' }}>
+                      <iframe
+                        src={activeLesson.contentUrl}
+                        title={activeLesson.title}
+                        style={{ width: '100%', height: 560, border: 'none', display: 'block' }}
+                        sandbox="allow-scripts allow-same-origin"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* ─── External link ─── */}
+                {activeLesson.type === 'link' && (
+                  <div style={{ marginBottom: 16 }}>
+                    <a
+                      href={activeLesson.contentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 20px', borderRadius: 12, background: 'linear-gradient(135deg, #2d6a4f, #1a4731)', color: '#fff', fontWeight: 600, fontSize: 14, textDecoration: 'none' }}
+                    >
+                      <ExternalLink size={16} /> Open Link
+                    </a>
+                  </div>
                 )}
 
                 <div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
-                  {!isLessonDone(activeLesson._id) ? (
-                    <button onClick={() => handleMarkLesson(activeLesson._id)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 12, background: '#ecfdf5', color: '#15803d', fontWeight: 600, fontSize: 13, border: '1px solid #86efac', cursor: 'pointer', transition: 'all 0.2s' }}>
-                      <CheckCircle size={16} /> Mark as Complete
-                    </button>
-                  ) : (
+                  {!isLessonDone(activeLesson._id) ? (() => {
+                    const isVideo = activeLesson.type === 'video' && !activeLesson.contentUrl.includes('youtube');
+                    const disabled = isVideo && !videoProgressOk;
+                    return (
+                      <button onClick={() => handleMarkLesson(activeLesson._id)}
+                        disabled={disabled}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 12, 
+                          background: disabled ? '#f3f4f6' : '#ecfdf5', 
+                          color: disabled ? '#9ca3af' : '#15803d', 
+                          fontWeight: 600, fontSize: 13, 
+                          border: `1px solid ${disabled ? '#e5e7eb' : '#86efac'}`, 
+                          cursor: disabled ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}>
+                        <CheckCircle size={16} /> Mark as Complete
+                      </button>
+                    );
+                  })() : (
                     <span style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 12, background: '#ecfdf5', color: '#15803d', fontWeight: 600, fontSize: 13, border: '1px solid #86efac' }}>
                       ✅ Completed
+                    </span>
+                  )}
+                  {activeLesson.type === 'video' && !isLessonDone(activeLesson._id) && !activeLesson.contentUrl.includes('youtube') && (
+                    <span style={{ display: 'flex', alignItems: 'center', fontSize: 12, color: '#6b7280', fontStyle: 'italic' }}>
+                      * Watch at least 75% of the video to unlock.
                     </span>
                   )}
                 </div>
@@ -396,11 +509,11 @@ const CourseLearning = () => {
                 {certRequest ? (
                   <div style={{
                     padding: '14px 20px', borderRadius: 14, textAlign: 'center',
-                    background: certRequest.status === 'pending' ? '#fffbeb' : certRequest.status === 'approved' ? '#ecfdf5' : '#fef2f2',
-                    border: `1px solid ${certRequest.status === 'pending' ? '#fde68a' : certRequest.status === 'approved' ? '#86efac' : '#fecaca'}`,
+                    background: (certRequest.status === 'mentor_pending' || certRequest.status === 'admin_pending') ? '#fffbeb' : certRequest.status === 'approved' ? '#ecfdf5' : '#fef2f2',
+                    border: `1px solid ${(certRequest.status === 'mentor_pending' || certRequest.status === 'admin_pending') ? '#fde68a' : certRequest.status === 'approved' ? '#86efac' : '#fecaca'}`,
                   }}>
-                    <p style={{ fontSize: 14, fontWeight: 700, margin: 0, color: certRequest.status === 'pending' ? '#92400e' : certRequest.status === 'approved' ? '#15803d' : '#dc2626' }}>
-                      {certRequest.status === 'pending' ? '⏳ Certificate Pending' : certRequest.status === 'approved' ? '🏆 Certificate Approved' : '❌ Certificate Rejected'}
+                    <p style={{ fontSize: 14, fontWeight: 700, margin: 0, color: (certRequest.status === 'mentor_pending' || certRequest.status === 'admin_pending') ? '#92400e' : certRequest.status === 'approved' ? '#15803d' : '#dc2626' }}>
+                      {certRequest.status === 'mentor_pending' ? '⏳ Pending Mentor Approval' : certRequest.status === 'admin_pending' ? '⏳ Pending Admin Approval' : certRequest.status === 'approved' ? '🏆 Certificate Approved' : '❌ Certificate Rejected'}
                     </p>
                   </div>
                 ) : (
@@ -463,20 +576,23 @@ const CourseLearning = () => {
 
                     {expandedModule === mod._id && unlocked && (
                       <div style={{ background: '#fafbfc', borderTop: '1px solid #f3f4f6' }}>
-                        {(mod.lessons || []).map((lesson) => {
+                        {(mod.lessons || []).map((lesson, lessonIndex) => {
                           const Icon = typeIcon[lesson.type] || FileText;
                           const done = isLessonDone(lesson._id);
+                          const lessonUnlocked = isLessonUnlocked(modIndex, lessonIndex);
                           return (
                             <button key={lesson._id}
-                              onClick={() => { setActiveLesson(lesson); setActiveTest(null); setTestResult(null); }}
+                              onClick={() => { if(lessonUnlocked) { setActiveLesson(lesson); setVideoProgressOk(false); setActiveTest(null); setTestResult(null); } }}
+                              disabled={!lessonUnlocked}
                               style={{
                                 width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px 10px 24px',
                                 border: 'none', background: activeLesson?._id === lesson._id ? '#ecfdf5' : 'transparent',
-                                cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
+                                cursor: lessonUnlocked ? 'pointer' : 'not-allowed', textAlign: 'left', transition: 'all 0.15s',
                                 borderLeft: activeLesson?._id === lesson._id ? '3px solid #2d6a4f' : '3px solid transparent',
+                                opacity: lessonUnlocked ? 1 : 0.6,
                               }}
                             >
-                              {done ? <CheckCircle size={13} color="#22c55e" /> : <Icon size={13} color={typeColor[lesson.type]} />}
+                              {!lessonUnlocked ? <Lock size={13} color="#d1d5db" /> : done ? <CheckCircle size={13} color="#22c55e" /> : <Icon size={13} color={typeColor[lesson.type]} />}
                               <span style={{ fontSize: 12, color: done ? '#6b7280' : '#374151', flex: 1, fontWeight: 500, textDecoration: done ? 'none' : 'none' }}>{lesson.title}</span>
                               <span style={{ fontSize: 10, color: '#d1d5db', textTransform: 'uppercase', fontWeight: 600 }}>{lesson.type}</span>
                             </button>
@@ -484,22 +600,27 @@ const CourseLearning = () => {
                         })}
 
                         {/* Module Quiz */}
-                        {modTest && (
-                          <button
-                            onClick={() => { setActiveTest(modTest); setActiveLesson(null); setTestResult(null); setAnswers({}); }}
-                            style={{
-                              width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px 10px 24px',
-                              border: 'none', cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
-                              background: activeTest?._id === modTest._id ? '#fffbeb' : 'transparent',
-                              borderLeft: activeTest?._id === modTest._id ? '3px solid #f59e0b' : '3px solid transparent',
-                            }}
-                          >
-                            <FileText size={13} color="#f59e0b" />
-                            <span style={{ fontSize: 12, color: '#92400e', flex: 1, fontWeight: 600 }}>📝 Module Quiz</span>
-                            {modTestResult?.passed && <span style={{ fontSize: 10, color: '#15803d', fontWeight: 700 }}>✅ {modTestResult.score}%</span>}
-                            {modTestResult && !modTestResult.passed && <span style={{ fontSize: 10, color: '#dc2626', fontWeight: 700 }}>❌ {modTestResult.score}%</span>}
-                          </button>
-                        )}
+                        {modTest && (() => {
+                          const quizUnlocked = allLessonsDone;
+                          return (
+                            <button
+                              onClick={() => { if(quizUnlocked) { setActiveTest(modTest); setActiveLesson(null); setTestResult(null); setAnswers({}); } }}
+                              disabled={!quizUnlocked}
+                              style={{
+                                width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px 10px 24px',
+                                border: 'none', cursor: quizUnlocked ? 'pointer' : 'not-allowed', textAlign: 'left', transition: 'all 0.15s',
+                                background: activeTest?._id === modTest._id ? '#fffbeb' : 'transparent',
+                                borderLeft: activeTest?._id === modTest._id ? '3px solid #f59e0b' : '3px solid transparent',
+                                opacity: quizUnlocked ? 1 : 0.6,
+                              }}
+                            >
+                              {!quizUnlocked ? <Lock size={13} color="#d1d5db" /> : <FileText size={13} color="#f59e0b" />}
+                              <span style={{ fontSize: 12, color: '#92400e', flex: 1, fontWeight: 600 }}>📝 Module Quiz</span>
+                              {modTestResult?.passed && <span style={{ fontSize: 10, color: '#15803d', fontWeight: 700 }}>✅ {modTestResult.score}%</span>}
+                              {modTestResult && !modTestResult.passed && <span style={{ fontSize: 10, color: '#dc2626', fontWeight: 700 }}>❌ {modTestResult.score}%</span>}
+                            </button>
+                          );
+                        })()}
 
                         {/* Auto-complete: mark done if all lessons done + test passed (or no test) */}
                         {!done && allLessonsDone && (!modTest || modTestResult?.passed) && (

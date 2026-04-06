@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import DashboardLayout from '../../components/DashboardLayout';
-import { apiGetEnrolledCourses } from '../../api';
-import { BookOpen, ChevronRight, Clock, Users, ArrowRight, Layers, Search } from 'lucide-react';
+import { apiGetEnrolledCourses, apiGetProgress } from '../../api';
+import { BookOpen, ChevronRight, Clock, ArrowRight, Layers, Search, CheckCircle, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const levelColor = { Beginner: '#2d6a4f', Intermediate: '#1565c0', Advanced: '#e65100' };
@@ -10,17 +10,49 @@ const catColors = ['#2d6a4f', '#1565c0', '#e65100', '#6a1b9a', '#00695c', '#ad14
 
 const MyCourses = () => {
   const [courses, setCourses] = useState([]);
+  const [progressMap, setProgressMap] = useState({}); // courseId -> { pct, completedModules, totalModules }
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
 
   useEffect(() => {
-    apiGetEnrolledCourses()
-      .then((res) => setCourses(res.data.data || []))
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    const load = async () => {
+      try {
+        const res = await apiGetEnrolledCourses();
+        const enrolled = res.data.data || [];
+        setCourses(enrolled);
+
+        // Fetch real progress for each course in parallel
+        const progressResults = await Promise.allSettled(
+          enrolled.map(c => apiGetProgress(c._id))
+        );
+        const map = {};
+        enrolled.forEach((c, i) => {
+          const result = progressResults[i];
+          if (result.status === 'fulfilled') {
+            const p = result.value.data.data;
+            const totalModules = c.modules?.length || 0;
+            const completedModules = p?.completedModules?.length || 0;
+            map[c._id] = {
+              pct: totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0,
+              completedModules,
+              totalModules,
+            };
+          } else {
+            map[c._id] = { pct: 0, completedModules: 0, totalModules: c.modules?.length || 0 };
+          }
+        });
+        setProgressMap(map);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, []);
 
   const filtered = filter === 'all' ? courses : courses.filter(c => c.level === filter);
+  const completedCount = Object.values(progressMap).filter(p => p.pct === 100).length;
 
   if (loading) return (
     <DashboardLayout>
@@ -56,7 +88,8 @@ const MyCourses = () => {
       <div style={{ display: 'flex', gap: 14, marginBottom: 24, flexWrap: 'wrap' }}>
         {[
           { label: 'Total Courses', value: courses.length, color: '#2d6a4f', icon: BookOpen },
-          { label: 'In Progress', value: courses.length, color: '#1565c0', icon: Clock },
+          { label: 'Completed', value: completedCount, color: '#15803d', icon: CheckCircle },
+          { label: 'In Progress', value: courses.length - completedCount, color: '#1565c0', icon: Clock },
         ].map((s, i) => (
           <div key={i} style={{
             display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px',
@@ -95,23 +128,22 @@ const MyCourses = () => {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20 }}>
           {filtered.map((course, idx) => {
-            const progress = Math.floor(Math.random() * 70) + 10; // Replace with real progress
-            const color = catColors[idx % catColors.length];
+            const prog = progressMap[course._id] || { pct: 0, completedModules: 0, totalModules: course.modules?.length || 0 };
+            const { pct, completedModules, totalModules } = prog;
+            const isComplete = pct === 100;
+            const color = isComplete ? '#15803d' : catColors[idx % catColors.length];
             return (
               <Link key={course._id} to={`/student/course/${course._id}`} style={{ textDecoration: 'none', display: 'block' }}>
                 <div style={{
                   background: '#fff', borderRadius: 20, overflow: 'hidden',
-                  border: '1px solid #eef1f4', transition: 'all 0.3s ease',
+                  border: `1px solid ${isComplete ? '#86efac' : '#eef1f4'}`, transition: 'all 0.3s ease',
                   cursor: 'pointer',
                 }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-6px)'; e.currentTarget.style.boxShadow = `0 20px 50px ${color}12`; e.currentTarget.style.borderColor = `${color}30`; }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#eef1f4'; }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-6px)'; e.currentTarget.style.boxShadow = `0 20px 50px ${color}18`; e.currentTarget.style.borderColor = `${color}40`; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = isComplete ? '#86efac' : '#eef1f4'; }}
                 >
                   {/* Card Header / Thumbnail */}
-                  <div style={{
-                    height: 140, position: 'relative', overflow: 'hidden',
-                    background: course.thumbnail ? 'none' : `linear-gradient(135deg, ${color}18, ${color}08)`,
-                  }}>
+                  <div style={{ height: 140, position: 'relative', overflow: 'hidden', background: course.thumbnail ? 'none' : `linear-gradient(135deg, ${color}18, ${color}08)` }}>
                     {course.thumbnail ? (
                       <img src={course.thumbnail} alt={course.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
@@ -120,20 +152,21 @@ const MyCourses = () => {
                         <BookOpen size={40} color={color} style={{ opacity: 0.25 }} />
                       </div>
                     )}
+                    {/* Completed overlay */}
+                    {isComplete && (
+                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(21,128,61,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ background: '#15803d', color: '#fff', borderRadius: 50, padding: '6px 16px', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <CheckCircle size={14} /> Completed
+                        </div>
+                      </div>
+                    )}
                     {/* Level Badge */}
-                    <div style={{
-                      position: 'absolute', top: 12, right: 12,
-                      background: levelBg[course.level] || '#f3f4f6',
-                      color: levelColor[course.level] || '#374151',
-                      fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 20,
-                      border: `1px solid ${levelColor[course.level] || '#e5e7eb'}20`,
-                      backdropFilter: 'blur(8px)',
-                    }}>
+                    <div style={{ position: 'absolute', top: 12, right: 12, background: levelBg[course.level] || '#f3f4f6', color: levelColor[course.level] || '#374151', fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 20, backdropFilter: 'blur(8px)' }}>
                       {course.level || 'General'}
                     </div>
-                    {/* Progress overlay bar at bottom */}
-                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 4, background: 'rgba(0,0,0,0.06)' }}>
-                      <div style={{ height: '100%', width: `${progress}%`, background: `linear-gradient(90deg, ${color}, ${color}cc)`, transition: 'width 1s ease' }} />
+                    {/* Progress bar at bottom of card image */}
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 5, background: 'rgba(0,0,0,0.08)' }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: isComplete ? 'linear-gradient(90deg,#15803d,#22c55e)' : `linear-gradient(90deg, ${color}, ${color}cc)`, transition: 'width 1s ease' }} />
                     </div>
                   </div>
 
@@ -148,43 +181,37 @@ const MyCourses = () => {
                       {course.title}
                     </h3>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
-                      <div style={{
-                        width: 22, height: 22, borderRadius: '50%',
-                        background: `linear-gradient(135deg, ${color}, ${color}aa)`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 10, fontWeight: 700, color: '#fff',
-                      }}>
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: `linear-gradient(135deg, ${color}, ${color}aa)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: '#fff' }}>
                         {course.mentorId?.name?.[0]}
                       </div>
                       <span style={{ fontSize: 12, color: '#6b7280' }}>{course.mentorId?.name}</span>
                     </div>
 
-                    {/* Progress Section */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                      <div style={{ flex: 1, height: 6, borderRadius: 6, background: '#f3f4f6', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${progress}%`, borderRadius: 6, background: `linear-gradient(90deg, ${color}, ${color}aa)`, transition: 'width 1s ease' }} />
+                    {/* Real Progress Section */}
+                    <div style={{ marginBottom: 6 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                        <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>{completedModules}/{totalModules} modules</span>
+                        <span style={{ fontSize: 13, fontWeight: 800, color }}>{pct}%</span>
                       </div>
-                      <span style={{ fontSize: 12, fontWeight: 700, color }}>{progress}%</span>
+                      <div style={{ flex: 1, height: 7, borderRadius: 6, background: '#f3f4f6', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${pct}%`, borderRadius: 6, background: isComplete ? 'linear-gradient(90deg,#15803d,#22c55e)' : `linear-gradient(90deg, ${color}, ${color}aa)`, transition: 'width 1s ease' }} />
+                      </div>
                     </div>
 
                     {/* Footer */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, paddingTop: 14, borderTop: '1px solid #f3f4f6' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        {course.durationWeeks && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <Clock size={12} color="#9ca3af" />
-                            <span style={{ fontSize: 11, color: '#9ca3af' }}>{course.durationWeeks}w</span>
-                          </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {isComplete ? (
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#15803d', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <CheckCircle size={12} /> All done!
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 11, color: '#9ca3af', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Layers size={12} /> In progress
+                          </span>
                         )}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <Layers size={12} color="#9ca3af" />
-                          <span style={{ fontSize: 11, color: '#9ca3af' }}>In progress</span>
-                        </div>
                       </div>
-                      <div style={{
-                        width: 28, height: 28, borderRadius: 8, background: `${color}10`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 8, background: `${color}10`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <ArrowRight size={14} color={color} />
                       </div>
                     </div>
@@ -200,3 +227,5 @@ const MyCourses = () => {
 };
 
 export default MyCourses;
+
+

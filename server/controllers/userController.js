@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const MentorReview = require('../models/MentorReview');
 
 // @desc   Get all users (admin)
 // @route  GET /api/users
@@ -41,6 +42,22 @@ const submitProfile = async (req, res) => {
     user.profileSubmission = req.body;
     user.submissionStatus = 'submitted';
     user.rejectionReason = '';
+
+    // Mirror mentor profile fields to root-level fields immediately so they're accessible globally
+    if (user.role === 'mentor') {
+      if (req.body.skills && Array.isArray(req.body.skills)) {
+        user.skills = req.body.skills;
+      }
+      if (req.body.yearsOfExperience) {
+        // Parse numeric value from strings like "3-5 years" → 3
+        const parsed = parseInt(String(req.body.yearsOfExperience));
+        if (!isNaN(parsed)) user.yearsOfExperience = parsed;
+      }
+      if (req.body.professionalBackground) {
+        user.bio = req.body.professionalBackground;
+      }
+    }
+
     await user.save();
 
     res.json({
@@ -57,12 +74,29 @@ const submitProfile = async (req, res) => {
 // @route  PATCH /api/users/:id/approve
 const approveUser = async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { isApproved: true, submissionStatus: 'approved', rejectionReason: '' },
-      { new: true }
-    ).select('-password');
+    const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    user.isApproved = true;
+    user.submissionStatus = 'approved';
+    user.rejectionReason = '';
+
+    // Sync profileSubmission fields to root-level for mentors (fixes existing mentors with data in profileSubmission)
+    if (user.role === 'mentor' && user.profileSubmission) {
+      const ps = user.profileSubmission;
+      if (ps.skills && Array.isArray(ps.skills) && ps.skills.length > 0) {
+        user.skills = ps.skills;
+      }
+      if (ps.yearsOfExperience) {
+        const parsed = parseInt(String(ps.yearsOfExperience));
+        if (!isNaN(parsed)) user.yearsOfExperience = parsed;
+      }
+      if (ps.professionalBackground && !user.bio) {
+        user.bio = ps.professionalBackground;
+      }
+    }
+
+    await user.save();
     res.json({ success: true, message: 'User approved', data: user });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -125,12 +159,73 @@ const deleteUser = async (req, res) => {
 // @route  GET /api/users/mentors
 const getMentors = async (req, res) => {
   try {
-    const mentors = await User.find({ role: 'mentor', isApproved: true, isBlocked: false })
-      .select('name email avatar bio skills yearsOfExperience rating reviewCount');
+    const rawMentors = await User.find({ role: 'mentor', isApproved: true, isBlocked: false })
+      .select('name email avatar bio skills yearsOfExperience rating reviewCount profileSubmission');
+
+    // Merge profileSubmission data as fallback
+    const mentors = rawMentors.map(m => {
+      const obj = m.toObject();
+      const ps = obj.profileSubmission || {};
+      if ((!obj.skills || obj.skills.length === 0) && ps.skills?.length > 0) obj.skills = ps.skills;
+      if (!obj.yearsOfExperience && ps.yearsOfExperience) {
+        const parsed = parseInt(String(ps.yearsOfExperience));
+        obj.yearsOfExperience = isNaN(parsed) ? 0 : parsed;
+      }
+      if (!obj.bio && ps.professionalBackground) obj.bio = ps.professionalBackground;
+      obj.currentRole = ps.currentRole || ps.role || '';
+      delete obj.profileSubmission;
+      return obj;
+    });
+
+    // Attach 2 most recent reviews for each mentor
+    await Promise.all(mentors.map(async (m) => {
+      const reviews = await MentorReview.find({ mentorId: m._id })
+        .populate('studentId', 'name avatar')
+        .sort({ createdAt: -1 })
+        .limit(2)
+        .lean();
+      m.recentReviews = reviews.map(r => ({
+        studentName: r.studentId?.name || 'Student',
+        rating: r.rating,
+        comment: r.comment || '',
+        createdAt: r.createdAt,
+      }));
+    }));
+
     res.json({ success: true, data: mentors });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-module.exports = { getAllUsers, getUserById, submitProfile, approveUser, rejectUser, toggleBlock, deleteUser, getMentors };
+// @desc   One-time migration: sync all approved mentors' profileSubmission → root fields
+// @route  POST /api/users/sync-mentor-profiles (admin only)
+const syncMentorProfiles = async (req, res) => {
+  try {
+    const mentors = await User.find({ role: 'mentor', profileSubmission: { $ne: null } });
+    let updated = 0;
+    for (const mentor of mentors) {
+      const ps = mentor.profileSubmission;
+      if (!ps) continue;
+      let changed = false;
+      if (ps.skills?.length > 0 && mentor.skills.length === 0) {
+        mentor.skills = ps.skills;
+        changed = true;
+      }
+      if (ps.yearsOfExperience && !mentor.yearsOfExperience) {
+        const parsed = parseInt(String(ps.yearsOfExperience));
+        if (!isNaN(parsed)) { mentor.yearsOfExperience = parsed; changed = true; }
+      }
+      if (ps.professionalBackground && !mentor.bio) {
+        mentor.bio = ps.professionalBackground;
+        changed = true;
+      }
+      if (changed) { await mentor.save(); updated++; }
+    }
+    res.json({ success: true, message: `Synced ${updated} mentor(s)` });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+module.exports = { getAllUsers, getUserById, submitProfile, approveUser, rejectUser, toggleBlock, deleteUser, getMentors, syncMentorProfiles };

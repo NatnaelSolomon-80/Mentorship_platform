@@ -18,6 +18,7 @@ import CourseLearning from './pages/student/CourseLearning';
 import StudentChat from './pages/student/StudentChat';
 import StudentCertificates from './pages/student/StudentCertificates';
 import StudentBadges from './pages/student/StudentBadges';
+import StudentJobBoard from './pages/student/StudentJobBoard';
 
 // Mentor
 import MentorDashboard from './pages/mentor/MentorDashboard';
@@ -31,13 +32,19 @@ import AdminUsers from './pages/admin/AdminUsers';
 import AdminCourses from './pages/admin/AdminCourses';
 import AdminReports from './pages/admin/AdminReports';
 import AdminBadges from './pages/admin/AdminBadges';
+import AdminCertificates from './pages/admin/AdminCertificates';
 
 // Employer
 import EmployerDashboard from './pages/employer/EmployerDashboard';
 import StudentDirectory from './pages/employer/StudentDirectory';
+import EmployerJobs from './pages/employer/EmployerJobs';
+import EmployerRequests from './pages/employer/EmployerRequests';
+import EmployerMessages from './pages/employer/EmployerMessages';
 
 // Shared
 import VideoMeeting from './pages/VideoMeeting';
+import InterviewRoom from './pages/InterviewRoom';
+import Profile from './pages/Profile';
 
 function App() {
   return (
@@ -58,6 +65,9 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
+          {/* User Profile */}
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+
           {/* Student */}
           <Route path="/student/dashboard" element={<ProtectedRoute roles={['student']}><StudentDashboard /></ProtectedRoute>} />
           <Route path="/student/browse" element={<ProtectedRoute roles={['student']}><BrowseCourses /></ProtectedRoute>} />
@@ -66,6 +76,7 @@ function App() {
           <Route path="/student/chat" element={<ProtectedRoute roles={['student']}><StudentChat /></ProtectedRoute>} />
           <Route path="/student/certificates" element={<ProtectedRoute roles={['student']}><StudentCertificates /></ProtectedRoute>} />
           <Route path="/student/badges" element={<ProtectedRoute roles={['student']}><StudentBadges /></ProtectedRoute>} />
+          <Route path="/student/jobs" element={<ProtectedRoute roles={['student']}><StudentJobBoard /></ProtectedRoute>} />
 
           {/* Mentor */}
           <Route path="/mentor/dashboard" element={<ProtectedRoute roles={['mentor']}><MentorDashboard /></ProtectedRoute>} />
@@ -78,15 +89,20 @@ function App() {
           <Route path="/admin/dashboard" element={<ProtectedRoute roles={['admin']}><AdminDashboard /></ProtectedRoute>} />
           <Route path="/admin/users" element={<ProtectedRoute roles={['admin']}><AdminUsers /></ProtectedRoute>} />
           <Route path="/admin/courses" element={<ProtectedRoute roles={['admin']}><AdminCourses /></ProtectedRoute>} />
-          <Route path="/admin/reports" element={<ProtectedRoute roles={['admin']}><AdminReports /></ProtectedRoute>} />
-          <Route path="/admin/badges" element={<ProtectedRoute roles={['admin']}><AdminBadges /></ProtectedRoute>} />
+          <Route path="/admin/reports"       element={<ProtectedRoute roles={['admin']}><AdminReports /></ProtectedRoute>} />
+          <Route path="/admin/badges"        element={<ProtectedRoute roles={['admin']}><AdminBadges /></ProtectedRoute>} />
+          <Route path="/admin/certificates"  element={<ProtectedRoute roles={['admin']}><AdminCertificates /></ProtectedRoute>} />
 
           {/* Employer */}
           <Route path="/employer/dashboard" element={<ProtectedRoute roles={['employer']}><EmployerDashboard /></ProtectedRoute>} />
+          <Route path="/employer/jobs" element={<ProtectedRoute roles={['employer']}><EmployerJobs /></ProtectedRoute>} />
+          <Route path="/employer/requests" element={<ProtectedRoute roles={['employer']}><EmployerRequests /></ProtectedRoute>} />
+          <Route path="/employer/messages" element={<ProtectedRoute roles={['employer']}><EmployerMessages /></ProtectedRoute>} />
           <Route path="/employer/students" element={<ProtectedRoute roles={['employer']}><StudentDirectory /></ProtectedRoute>} />
 
           {/* Shared Meeting Route */}
           <Route path="/meeting/:roomName" element={<ProtectedRoute roles={['student', 'mentor']}><VideoMeeting /></ProtectedRoute>} />
+          <Route path="/interview/:roomId" element={<ProtectedRoute><InterviewRoom /></ProtectedRoute>} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/login" replace />} />

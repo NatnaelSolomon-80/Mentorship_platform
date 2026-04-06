@@ -69,84 +69,66 @@ const StudentCertificates = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, gap: 16 }}>
         <PageHeader title="My Certificates" subtitle="View your official credentials and manage requests" />
         <button 
           onClick={() => setShowModal(true)}
-          className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl font-bold shadow-[0_8px_20px_rgba(16,185,129,0.25)] hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+          style={{ background: 'linear-gradient(135deg, #059669, #10b981)', color: '#fff', padding: '14px 24px', borderRadius: 14, fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 14px rgba(16,185,129,0.3)' }}
         >
           <Award size={20} /> Request Certificate
         </button>
       </div>
 
-      <div className="space-y-10">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
         {/* Issued Certificates */}
         <section>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600">
-              <CheckCircle size={22} strokeWidth={2.5} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CheckCircle size={24} strokeWidth={2.5} />
             </div>
-            <h2 className="text-xl font-extrabold text-slate-800">Earned Certificates <span className="text-emerald-500 ml-1">({certs.length})</span></h2>
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1e293b', margin: 0 }}>Earned Certificates <span style={{ color: '#10b981' }}>({certs.length})</span></h2>
           </div>
           
           {certs.length === 0 ? (
-            <div className="bg-white border border-slate-100 rounded-[2rem] p-16 shadow-xl shadow-slate-200/40 relative overflow-hidden">
-              {/* Decorative background elements */}
-              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-300"></div>
-              <div className="absolute -top-20 -right-20 w-60 h-60 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
-              <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-teal-500/5 rounded-full blur-3xl pointer-events-none"></div>
-              
-              <div className="flex flex-col items-center justify-center text-center relative z-10">
-                {/* Stacked illustration */}
-                <div className="relative mb-8">
-                  <div className="w-28 h-28 bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-100 rounded-3xl flex items-center justify-center shadow-lg shadow-emerald-500/10 rotate-3">
-                    <Award size={48} className="text-emerald-400/70" strokeWidth={1.5} />
-                  </div>
-                  <div className="absolute -bottom-2 -right-3 w-10 h-10 bg-white border-2 border-slate-100 rounded-xl flex items-center justify-center shadow-md">
-                    <Clock size={18} className="text-slate-300" />
-                  </div>
-                </div>
-                
-                <h3 className="text-2xl font-extrabold text-slate-800 mb-3">No Certificates Yet</h3>
-                <p className="text-slate-500 text-[15px] leading-relaxed max-w-md mx-auto mb-10">
-                  Complete all modules and pass the final test in any enrolled course to earn your official digital certificate.
-                </p>
-                
-                <button onClick={() => setShowModal(true)} className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-8 py-3.5 rounded-2xl font-bold transition-all shadow-lg shadow-emerald-500/20 hover:-translate-y-0.5 flex items-center gap-2.5">
-                  <Award size={18} /> Check Eligibility
-                </button>
+            <div style={{ background: '#fff', borderRadius: 24, padding: '60px 20px', textAlign: 'center', border: '1px solid #f1f5f9', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+              <div style={{ width: 80, height: 80, background: '#f8fafc', border: '2px solid #e2e8f0', borderRadius: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', transform: 'rotate(5deg)' }}>
+                <Award size={40} color="#cbd5e1" />
               </div>
+              <h3 style={{ fontSize: 20, fontWeight: 800, color: '#1e293b', marginBottom: 12 }}>No Certificates Yet</h3>
+              <p style={{ color: '#64748b', fontSize: 15, maxWidth: 400, margin: '0 auto 24px', lineHeight: 1.6 }}>Complete all modules and pass the final test in any enrolled course to earn your official digital certificate.</p>
+              <button 
+                onClick={() => setShowModal(true)}
+                style={{ background: '#fff', color: '#059669', padding: '12px 24px', borderRadius: 12, fontWeight: 700, fontSize: 14, border: '2px solid #a7f3d0', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+              >
+                <Clock size={18} /> Check Eligibility
+              </button>
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
               {certs.map((cert) => (
-                <div key={cert._id} className="bg-white rounded-[1.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 hover:shadow-2xl hover:shadow-emerald-500/10 transition-all duration-300 overflow-hidden group flex flex-col">
-                  {/* Decorative Document Header */}
-                  <div className="h-28 bg-gradient-to-br from-emerald-50 to-teal-50 relative p-6 border-b border-emerald-100/50">
-                    <div className="absolute -right-4 -top-4 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all"></div>
-                    <Award size={36} className="text-emerald-500 drop-shadow-sm mb-4" />
-                    <div className="absolute bottom-[-16px] right-6 w-12 h-12 bg-white rounded-full shadow-md flex items-center justify-center border border-slate-50 text-emerald-600">
-                      <CheckCircle size={24} />
+                <div key={cert._id} style={{ background: '#fff', borderRadius: 20, border: '1px solid #f1f5f9', boxShadow: '0 10px 30px rgba(0,0,0,0.04)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ height: 110, background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)', padding: 24, position: 'relative', borderBottom: '1px solid #a7f3d0' }}>
+                    <Award size={40} color="#059669" />
+                    <div style={{ position: 'absolute', bottom: -20, right: 24, width: 44, height: 44, background: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
+                      <CheckCircle size={24} color="#059669" />
                     </div>
                   </div>
-                  
-                  <div className="p-6 flex-1 flex flex-col">
-                    <h3 className="font-extrabold text-slate-800 text-lg mb-2 leading-tight">{cert.courseId?.title}</h3>
-                    <p className="text-sm font-medium text-slate-500 mb-4 flex items-center gap-2">
-                      <BookOpen size={16} className="text-slate-400" /> Signed by {cert.mentorId?.name}
+                  <div style={{ padding: 24, flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <h3 style={{ fontSize: 18, fontWeight: 800, color: '#1e293b', margin: '0 0 8px', lineHeight: 1.3 }}>{cert.courseId?.title}</h3>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: '#64748b', margin: '0 0 20px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <BookOpen size={16} color="#94a3b8" /> Signed by {cert.mentorId?.name}
                     </p>
-                    
-                    <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
-                      <p className="text-[13px] font-bold text-slate-400 flex items-center gap-1.5">
+                    <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: '#94a3b8', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Clock size={14} /> {new Date(cert.issuedAt).toLocaleDateString()}
                       </p>
                       <a
                         href={`/api/certificates/${cert._id}/view`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-emerald-600 font-bold text-sm flex items-center gap-1 hover:text-emerald-500 transition-colors group-hover:translate-x-1 duration-300"
+                        style={{ fontSize: 14, fontWeight: 700, color: '#059669', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
                       >
-                        View Official <ExternalLink size={16} className="ml-1" />
+                        View Official <ExternalLink size={16} />
                       </a>
                     </div>
                   </div>
@@ -159,36 +141,43 @@ const StudentCertificates = () => {
         {/* Pending Requests */}
         {requests.length > 0 && (
           <section>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500">
-                <Clock size={22} strokeWidth={2.5} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: '#f8fafc', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Clock size={24} strokeWidth={2.5} />
               </div>
-              <h2 className="text-xl font-extrabold text-slate-800">Pending Requests</h2>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1e293b', margin: 0 }}>Pending Requests</h2>
             </div>
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-md overflow-hidden">
-              <div className="divide-y divide-slate-100">
-                {requests.map((req) => (
-                  <div key={req._id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400">
-                        <Award size={20} />
+            
+            <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #f1f5f9', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {requests.map((req, idx) => (
+                  <div key={req._id} style={{ padding: '20px 24px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16, borderBottom: idx !== requests.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                      <div style={{ width: 48, height: 48, background: '#f1f5f9', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+                        <Award size={24} />
                       </div>
                       <div>
-                        <h4 className="font-bold text-slate-800">{req.courseId?.title}</h4>
-                        <p className="text-sm text-slate-500 font-medium">Mentor: {req.mentorId?.name}</p>
+                        <h4 style={{ fontSize: 15, fontWeight: 700, color: '#1e293b', margin: '0 0 4px' }}>{req.courseId?.title}</h4>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: '#64748b', margin: 0 }}>Mentor: {req.mentorId?.name}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <p className="text-[13px] font-bold text-slate-400 mr-2">{new Date(req.createdAt).toLocaleDateString()}</p>
-                      <span className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 border
-                        ${req.status === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-200' : 
-                          req.status === 'approved' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 
-                          'bg-red-50 text-red-600 border-red-200'}
-                      `}>
-                        {req.status === 'pending' && <><Clock size={14} /> In Review</>}
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: '#94a3b8', margin: 0 }}>{new Date(req.createdAt).toLocaleDateString()}</p>
+                      
+                      <div style={{ 
+                        padding: '6px 12px', borderRadius: 10, fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6,
+                        ...(req.status === 'mentor_pending' || req.status === 'admin_pending' 
+                            ? { background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a' }
+                            : req.status === 'approved' 
+                            ? { background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0' }
+                            : { background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' })
+                      }}>
+                        {req.status === 'mentor_pending' && <><Clock size={14} /> In Mentor Review</>}
+                        {req.status === 'admin_pending' && <><Clock size={14} /> In Admin Review</>}
                         {req.status === 'approved' && <><CheckCircle size={14} /> Approved</>}
                         {req.status === 'rejected' && <><XCircle size={14} /> Rejected</>}
-                      </span>
+                      </div>
                     </div>
                   </div>
                 ))}

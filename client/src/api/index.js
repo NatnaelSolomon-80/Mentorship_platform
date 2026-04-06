@@ -81,9 +81,10 @@ export const apiUpdateReport = (id, data) => API.patch(`/reports/${id}`, data);
 
 // ───────── Certificates ─────────
 export const apiRequestCertificate = (data) => API.post('/certificates/request', data);
-export const apiRespondCertificate = (id, data) => API.patch(`/certificates/request/${id}`, data);
-export const apiGetCertRequests = () => API.get('/certificates/requests');
-export const apiGetMyCertificates = () => API.get('/certificates/mine');
+export const apiMentorRespondCert  = (id, data) => API.patch(`/certificates/request/${id}/mentor`, data);
+export const apiAdminRespondCert   = (id, data) => API.patch(`/certificates/request/${id}/admin`, data);
+export const apiGetCertRequests    = () => API.get('/certificates/requests');
+export const apiGetMyCertificates  = () => API.get('/certificates/mine');
 export const apiGetCertifiedStudents = () => API.get('/certificates/students');
 
 // ───────── Badges ─────────
@@ -112,6 +113,20 @@ export const apiBookSession = (data) => API.post('/sessions/book', data);
 export const apiDirectScheduleSession = (data) => API.post('/sessions/direct', data);
 export const apiGetMySessions = () => API.get('/sessions');
 export const apiUpdateSession = (id, data) => API.patch(`/sessions/${id}`, data);
+
+// ───────── Jobs & Placements ─────────
+export const apiCreateJob = (data) => API.post('/jobs', data);
+export const apiGetEmployerJobs = () => API.get('/jobs/employer');
+export const apiGetPipelineStats = () => API.get('/jobs/pipeline-stats');
+export const apiGetAllJobs = () => API.get('/jobs');
+export const apiApplyForJob = (jobId, data) => API.post(`/jobs/${jobId}/apply`, data);
+export const apiGetStudentApplications = () => API.get('/jobs/my-applications');
+export const apiGetJobApplications = () => API.get('/jobs/applications');
+export const apiUpdateApplicationStatus = (id, data) => API.patch(`/jobs/applications/${id}`, data);
+export const apiSendJobOffer = (id, data) => API.patch(`/jobs/applications/${id}/offer`, data);
+export const apiRespondToOffer = (id, data) => API.patch(`/jobs/applications/${id}/student-response`, data);
+export const apiFinalizeHire = (id) => API.patch(`/jobs/applications/${id}/hire`);
+export const apiAdvanceApplicationStage = (id, data) => API.patch(`/jobs/applications/${id}/advance`, data);
 // Upload
 export const apiUploadFile = (file) => {
   const formData = new FormData();

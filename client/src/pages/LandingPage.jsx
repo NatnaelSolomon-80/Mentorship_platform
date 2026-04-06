@@ -70,9 +70,9 @@ const Logo = ({ size = 38 }) => (
     boxShadow: '0 4px 16px rgba(45,106,79,0.35)', position: 'relative',
   }}>
     <svg width={size * 0.55} height={size * 0.55} viewBox="0 0 24 24" fill="none">
-      <path d="M4 20L12 4L20 20" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M8 14H16" stroke="#b7e4c7" strokeWidth="2" strokeLinecap="round"/>
-      <circle cx="12" cy="8" r="1.5" fill="#b7e4c7"/>
+      <path d="M4 20L12 4L20 20" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8 14H16" stroke="#b7e4c7" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="12" cy="8" r="1.5" fill="#b7e4c7" />
     </svg>
   </div>
 );
@@ -167,7 +167,7 @@ const Hero = () => {
             🚀 Ethiopia's #1 Learning Platform
           </p>
           <h1 className="hero-fade-up-2 hero-heading" style={{ fontSize: 56, fontWeight: 900, color: '#fff', lineHeight: 1.05, marginBottom: 24, letterSpacing: '-1.5px' }}>
-            Unlock Your Next<br/>
+            Unlock Your Next<br />
             <span style={{ background: 'linear-gradient(135deg, #52b788, #b7e4c7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Career Move</span>
           </h1>
           <p className="hero-fade-up-3" style={{ fontSize: 16, color: 'rgba(255,255,255,0.5)', lineHeight: 1.8, marginBottom: 36, maxWidth: 460 }}>
@@ -187,7 +187,7 @@ const Hero = () => {
 
           <div className="hero-fade-up-4" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ display: 'flex', gap: 2 }}>
-              {[1,2,3,4,5].map(i => <Star key={i} size={14} fill="#f59e0b" color="#f59e0b" />)}
+              {[1, 2, 3, 4, 5].map(i => <Star key={i} size={14} fill="#f59e0b" color="#f59e0b" />)}
             </div>
             <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)' }}>
               Trusted by <strong style={{ color: 'rgba(255,255,255,0.8)' }}>500+</strong> learners across Ethiopia
@@ -269,15 +269,34 @@ const Hero = () => {
     </section>
   );
 };
+/* ─── Trusted Partners (Marquee) ─── */
+const partners = ['Addis Ababa University', 'AAIT', 'Unity University', 'Bahir Dar University', 'Jimma University', 'Hawassa University', 'Mekelle University', 'Adama Science'];
+const TrustedPartners = () => (
+  <section style={{ background: '#f8faf9', padding: '36px 0', borderTop: '1px solid #eef1f4', borderBottom: '1px solid #eef1f4', overflow: 'hidden' }}>
+    <p style={{ textAlign: 'center', fontSize: 12, color: '#9ca3af', fontWeight: 700, marginBottom: 20, letterSpacing: '1px', textTransform: 'uppercase' }}>Trusted by leading institutions</p>
+    <div style={{ overflow: 'hidden', position: 'relative' }}>
+      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 80, background: 'linear-gradient(90deg, #f8faf9, transparent)', zIndex: 2 }} />
+      <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 80, background: 'linear-gradient(270deg, #f8faf9, transparent)', zIndex: 2 }} />
+      <div className="marquee-track">
+        {[...partners, ...partners].map((name, i) => (
+          <div key={i} style={{ fontSize: 15, fontWeight: 800, color: '#969da5ff', letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap', flexShrink: 0 }}>
+            <GraduationCap size={18} /> {name}
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+);
+
 
 /* ─── Categories ─── */
 const categories = [
   { icon: Cpu, title: 'Technology', count: '64 courses', color: '#2d6a4f', bg: '#e8f5e9' },
-  { icon: Code, title: 'Engineering', count: '32 courses', color: '#1565c0', bg: '#e3f2fd' },
-  { icon: TrendingUp, title: 'Marketing', count: '18 courses', color: '#6a1b9a', bg: '#f3e5f5' },
-  { icon: BarChart3, title: 'Finance', count: '24 courses', color: '#e65100', bg: '#fff3e0' },
-  { icon: Briefcase, title: 'Business', count: '27 courses', color: '#00695c', bg: '#e0f2f1' },
-  { icon: Users, title: 'Human Resource', count: '14 courses', color: '#ad1457', bg: '#fce4ec' },
+  { icon: Code, title: 'WebDevleopment', count: '32 courses', color: '#1565c0', bg: '#e3f2fd' },
+  { icon: TrendingUp, title: 'AppDev', count: '18 courses', color: '#6a1b9a', bg: '#f3e5f5' },
+  { icon: BarChart3, title: 'MachineLearning', count: '24 courses', color: '#e65100', bg: '#fff3e0' },
+  { icon: Briefcase, title: 'AI', count: '27 courses', color: '#00695c', bg: '#e0f2f1' },
+  { icon: Users, title: 'Robotics', count: '14 courses', color: '#ad1457', bg: '#fce4ec' },
 ];
 
 const ExploreCategories = () => {
@@ -317,24 +336,6 @@ const ExploreCategories = () => {
   );
 };
 
-/* ─── Trusted Partners (Marquee) ─── */
-const partners = ['Addis Ababa University', 'AAIT', 'Unity University', 'Bahir Dar University', 'Jimma University', 'Hawassa University', 'Mekelle University', 'Adama Science'];
-const TrustedPartners = () => (
-  <section style={{ background: '#f8faf9', padding: '36px 0', borderTop: '1px solid #eef1f4', borderBottom: '1px solid #eef1f4', overflow: 'hidden' }}>
-    <p style={{ textAlign: 'center', fontSize: 12, color: '#9ca3af', fontWeight: 600, marginBottom: 20, letterSpacing: '1px', textTransform: 'uppercase' }}>Trusted by leading institutions</p>
-    <div style={{ overflow: 'hidden', position: 'relative' }}>
-      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 80, background: 'linear-gradient(90deg, #f8faf9, transparent)', zIndex: 2 }} />
-      <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 80, background: 'linear-gradient(270deg, #f8faf9, transparent)', zIndex: 2 }} />
-      <div className="marquee-track">
-        {[...partners, ...partners].map((name, i) => (
-          <div key={i} style={{ fontSize: 15, fontWeight: 800, color: '#c0c7d0', letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap', flexShrink: 0 }}>
-            <GraduationCap size={18} /> {name}
-          </div>
-        ))}
-      </div>
-    </div>
-  </section>
-);
 
 /* ─── How It Works / Reach Potential ─── */
 const HowItWorks = () => {
@@ -346,7 +347,7 @@ const HowItWorks = () => {
           <div ref={r1} className="reveal-left">
             <p style={{ fontSize: 12, fontWeight: 700, color: '#2d6a4f', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: 12 }}>Global Reach</p>
             <h2 style={{ fontSize: 38, fontWeight: 800, color: '#1a2e24', marginBottom: 16, lineHeight: 1.15, letterSpacing: '-0.5px' }}>
-              Reach Your Full<br/>Potential Worldwide
+              Reach Your Full<br />Potential Worldwide
             </h2>
             <p style={{ fontSize: 15, color: '#6b7280', lineHeight: 1.7, marginBottom: 32 }}>
               Expand your skills and learn from skilled mentors. Our platform makes it easy to find courses, learn at your pace, and earn certificates that employers trust.
@@ -406,8 +407,8 @@ const ExpertGuidance = () => {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }} className="expert-grid stagger-children">
           {[{ title: 'Explore Top Courses', desc: 'Discover featured courses or search by industry and skill level.', icon: Search, color: '#2d6a4f', bg: '#e8f5e9' },
-            { title: 'Understand Course Structure', desc: 'Dive into modules, tests, and certification paths before enrolling.', icon: BookOpen, color: '#1565c0', bg: '#e3f2fd' },
-            { title: 'Connect with Mentors', desc: 'Send enrollment requests, chat, and get personalized guidance.', icon: MessageCircle, color: '#6a1b9a', bg: '#f3e5f5' }
+          { title: 'Understand Course Structure', desc: 'Dive into modules, tests, and certification paths before enrolling.', icon: BookOpen, color: '#1565c0', bg: '#e3f2fd' },
+          { title: 'Connect with Mentors', desc: 'Send enrollment requests, chat, and get personalized guidance.', icon: MessageCircle, color: '#6a1b9a', bg: '#f3e5f5' }
           ].map((item, i) => (
             <RevealDiv key={i} className="reveal" style={{ background: '#fff', borderRadius: 20, padding: 32, border: '1px solid #eef1f4', transition: 'all 0.3s ease', cursor: 'pointer' }}
               onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-6px)'; e.currentTarget.style.boxShadow = '0 20px 50px rgba(0,0,0,0.06)'; }}
@@ -602,8 +603,8 @@ const Footer = () => (
           </p>
         </div>
         {[{ title: 'About', items: ['Features', 'How It Works', 'Roles', 'Certificates'] },
-          { title: 'Resources', items: ['Courses', 'Mentors', 'Help Desk', 'FAQ'] },
-          { title: 'Social', items: ['Telegram', 'LinkedIn', 'Twitter', 'Instagram'] }
+        { title: 'Resources', items: ['Courses', 'Mentors', 'Help Desk', 'FAQ'] },
+        { title: 'Social', items: ['Telegram', 'LinkedIn', 'Twitter', 'Instagram'] }
         ].map(col => (
           <div key={col.title}>
             <h4 style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.7)', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '1.5px' }}>{col.title}</h4>
@@ -643,8 +644,9 @@ const LandingPage = () => (
   <div style={{ minHeight: '100vh', background: '#fff' }}>
     <Navbar />
     <Hero />
-    <ExploreCategories />
     <TrustedPartners />
+
+    <ExploreCategories />
     <HowItWorks />
     <ExpertGuidance />
     <Roles />

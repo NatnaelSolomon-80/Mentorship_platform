@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate, NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, BookOpen, Users, MessageCircle, Award, Shield,
-  FileText, LogOut, Settings, Star, Briefcase, Search, Bell, AlertTriangle
+  FileText, LogOut, Settings, Star, Briefcase, Search, Bell, AlertTriangle, User
 } from 'lucide-react';
 
 const studentLinks = [
@@ -13,6 +13,8 @@ const studentLinks = [
   { to: '/student/chat', icon: MessageCircle, label: 'Messages' },
   { to: '/student/certificates', icon: Award, label: 'Certificates' },
   { to: '/student/badges', icon: Star, label: 'Badges' },
+  { to: '/student/jobs', icon: Briefcase, label: 'Job Board' },
+  { to: '/profile', icon: User, label: 'Profile' },
 ];
 
 const mentorLinks = [
@@ -21,19 +23,26 @@ const mentorLinks = [
   { to: '/mentor/students', icon: Users, label: 'Students' },
   { to: '/mentor/certificates', icon: Award, label: 'Certificates' },
   { to: '/mentor/chat', icon: MessageCircle, label: 'Messages' },
+  { to: '/profile', icon: User, label: 'Profile' },
 ];
 
 const adminLinks = [
-  { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/admin/users', icon: Users, label: 'Users' },
-  { to: '/admin/courses', icon: BookOpen, label: 'Courses' },
-  { to: '/admin/reports', icon: FileText, label: 'Reports' },
-  { to: '/admin/badges', icon: Award, label: 'Badges' },
+  { to: '/admin/dashboard',    icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/admin/users',        icon: Users,           label: 'Users' },
+  { to: '/admin/courses',      icon: BookOpen,        label: 'Courses' },
+  { to: '/admin/certificates', icon: Award,           label: 'Certificates' },
+  { to: '/admin/reports',      icon: FileText,        label: 'Reports' },
+  { to: '/admin/badges',       icon: Star,            label: 'Badges' },
+  { to: '/profile',            icon: User,            label: 'Profile' },
 ];
 
 const employerLinks = [
   { to: '/employer/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/employer/jobs', icon: Briefcase, label: 'My Jobs' },
+  { to: '/employer/requests', icon: FileText, label: 'Applications' },
+  { to: '/employer/messages', icon: MessageCircle, label: 'Messages' },
   { to: '/employer/students', icon: Users, label: 'Talent Pool' },
+  { to: '/profile', icon: User, label: 'Profile' },
 ];
 
 const linksByRole = { student: studentLinks, mentor: mentorLinks, admin: adminLinks, employer: employerLinks };
@@ -45,7 +54,7 @@ const roleConfig = {
   employer: { color: '#6a1b9a', bg: '#f3e5f5', label: 'Employer' },
 };
 
-const Sidebar = () => {
+const Sidebar = ({ unreadMessageCount = 0 }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -162,7 +171,20 @@ const Sidebar = () => {
               }}
             >
               <Icon size={17} />
-              <span>{label}</span>
+              <span className="flex-1 whitespace-nowrap">{label}</span>
+              {label === 'Messages' && unreadMessageCount > 0 && (
+                <span style={{
+                  background: '#ef4444',
+                  color: '#fff',
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  padding: '2px 6px',
+                  borderRadius: '10px',
+                  marginLeft: 'auto'
+                }}>
+                  {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+                </span>
+              )}
             </NavLink>
           );
         })}

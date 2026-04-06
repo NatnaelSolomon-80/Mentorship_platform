@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   getAllUsers, getUserById, submitProfile,
-  approveUser, rejectUser, toggleBlock, deleteUser, getMentors
+  approveUser, rejectUser, toggleBlock, deleteUser, getMentors, syncMentorProfiles
 } = require('../controllers/userController');
 const { protect } = require('../middleware/authMiddleware');
 const { authorizeRoles } = require('../middleware/roleMiddleware');
@@ -21,5 +21,8 @@ router.patch('/:id/approve', protect, checkBlock, authorizeRoles('admin'), appro
 router.patch('/:id/reject', protect, checkBlock, authorizeRoles('admin'), rejectUser);
 router.patch('/:id/block', protect, checkBlock, authorizeRoles('admin'), toggleBlock);
 router.delete('/:id', protect, checkBlock, authorizeRoles('admin'), deleteUser);
+
+// Admin utility — sync all mentors' profileSubmission data to root-level fields
+router.post('/sync-mentor-profiles', protect, checkBlock, authorizeRoles('admin'), syncMentorProfiles);
 
 module.exports = router;

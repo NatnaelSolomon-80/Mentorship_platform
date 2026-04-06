@@ -21,6 +21,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const sessionRoutes = require('./routes/sessionRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const jobRoutes = require('./routes/jobRoutes');
 
 // Connect Database
 connectDB();
@@ -56,6 +57,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/jobs', jobRoutes);
 
 // 404 handler
 app.use((req, res) => {

@@ -1,5 +1,8 @@
 const Lesson = require('../models/Lesson');
 const Module = require('../models/Module');
+const Course = require('../models/Course');
+const Enrollment = require('../models/Enrollment');
+const { createNotification } = require('./notificationController');
 
 // @desc   Get lessons for a module
 // @route  GET /api/lessons/module/:moduleId
@@ -23,6 +26,27 @@ const createLesson = async (req, res) => {
     const lesson = await Lesson.create({ moduleId, title, type, contentUrl, order, duration });
     module.lessons.push(lesson._id);
     await module.save();
+
+    // ── Notify all enrolled students ──
+    try {
+      const course = await Course.findById(module.courseId).select('title');
+      if (course) {
+        const enrollments = await Enrollment.find({ courseId: module.courseId }).select('studentId');
+        const typeLabel = type === 'video' ? '🎬 Video' : type === 'pdf' ? '📄 PDF' : type === 'link' ? '🔗 Link' : '📝 Note';
+        await Promise.all(enrollments.map(e =>
+          createNotification({
+            userId: e.studentId,
+            type: 'new_lesson',
+            title: `New lesson added to "${course.title}"`,
+            message: `${typeLabel}: "${title}" has been added to the module "${module.title}". Continue learning!`,
+            link: `/student/course/${module.courseId}`,
+            metadata: { courseId: module.courseId, moduleId, lessonId: lesson._id },
+          })
+        ));
+      }
+    } catch (notifErr) {
+      console.error('Lesson notification failed:', notifErr.message);
+    }
 
     res.status(201).json({ success: true, data: lesson });
   } catch (error) {
