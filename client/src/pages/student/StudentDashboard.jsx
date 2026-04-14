@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import DashboardLayout from '../../components/DashboardLayout';
 import { useAuth } from '../../context/AuthContext';
 import { apiGetEnrolledCourses, apiGetEnrollmentRequests, apiGetMyBadges, apiGetMyCertificates } from '../../api';
-import { BookOpen, Award, Star, Clock, ArrowRight, TrendingUp, CheckCircle, Zap, MessageCircle, BarChart3, Target, Flame, Calendar } from 'lucide-react';
+import { BookOpen, Award, Star, Clock, ArrowRight, TrendingUp, CheckCircle, Zap, MessageCircle, BarChart3, Target, Flame, Calendar, Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 /* ─── Mini Bar Chart ─── */
@@ -119,6 +119,11 @@ const StudentDashboard = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState({ courses: 0, certificates: 0, badges: 0, pending: 0 });
   const [enrolledCourses, setEnrolledCourses] = useState([]);
+  const [reminders, setReminders] = useState([
+    { id: 1, text: 'Complete one lesson before 7:00 PM', done: false },
+    { id: 2, text: 'Review quiz notes for 20 minutes', done: false },
+    { id: 3, text: 'Message your mentor with one question', done: true },
+  ]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -152,6 +157,62 @@ const StudentDashboard = () => {
   ], []);
 
   const totalHours = weeklyData.reduce((s, d) => s + d.value, 0);
+
+  const weeklyGoals = useMemo(() => {
+    const studyGoal = 14;
+    const sessionsGoal = 5;
+    const tasksGoal = 7;
+
+    const sessionsDone = Math.min(enrolledCourses.length + 1, sessionsGoal);
+    const tasksDone = reminders.filter(r => r.done).length + 2;
+
+    return [
+      { label: 'Study Hours', done: Math.min(totalHours, studyGoal), total: studyGoal, color: '#2d6a4f' },
+      { label: 'Study Sessions', done: sessionsDone, total: sessionsGoal, color: '#1565c0' },
+      { label: 'Tasks Completed', done: Math.min(tasksDone, tasksGoal), total: tasksGoal, color: '#e65100' },
+    ];
+  }, [enrolledCourses.length, reminders, totalHours]);
+
+  const todaySchedule = useMemo(() => {
+    const defaultItems = [
+      { time: '09:00', title: 'Review notes', type: 'Self-study', color: '#2d6a4f' },
+      { time: '14:00', title: 'Watch course lesson', type: 'Learning', color: '#1565c0' },
+      { time: '19:00', title: 'Practice quiz', type: 'Assessment', color: '#e65100' },
+    ];
+
+    if (!enrolledCourses.length) return defaultItems;
+
+    const slots = ['09:00', '13:30', '18:30'];
+    return enrolledCourses.slice(0, 3).map((course, i) => ({
+      time: slots[i],
+      title: course.title,
+      type: i === 0 ? 'Focus' : i === 1 ? 'Lesson' : 'Practice',
+      color: ['#2d6a4f', '#1565c0', '#6a1b9a'][i % 3],
+    }));
+  }, [enrolledCourses]);
+
+  const calendarMeta = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const firstWeekDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const monthLabel = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+    const cells = [
+      ...Array.from({ length: firstWeekDay }, () => null),
+      ...Array.from({ length: daysInMonth }, (_, idx) => idx + 1),
+    ];
+
+    const today = now.getDate();
+    const eventDays = [today, Math.min(today + 2, daysInMonth), Math.min(today + 5, daysInMonth)];
+
+    return { cells, today, monthLabel, eventDays };
+  }, []);
+
+  const toggleReminder = (id) => {
+    setReminders(prev => prev.map(r => (r.id === id ? { ...r, done: !r.done } : r)));
+  };
 
   if (loading) return (
     <DashboardLayout>
@@ -361,6 +422,101 @@ const StudentDashboard = () => {
         </div>
       </div>
 
+      {/* ─── Study Planner ─── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, marginBottom: 20 }} className="planner-grid">
+        <div style={{ background: '#fff', borderRadius: 18, border: '1px solid #eef1f4', padding: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+            <div>
+              <h2 style={{ fontSize: 17, fontWeight: 800, color: '#1a2e24', marginBottom: 2 }}>Study Planner</h2>
+              <p style={{ fontSize: 12, color: '#9ca3af' }}>Weekly goals and your schedule for today</p>
+            </div>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: '#f0faf3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Calendar size={18} color="#2d6a4f" />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 18 }} className="planner-goals-grid">
+            {weeklyGoals.map(goal => {
+              const pct = Math.min(Math.round((goal.done / goal.total) * 100), 100);
+              return (
+                <div key={goal.label} style={{ background: '#fafbfc', border: '1px solid #eef1f4', borderRadius: 14, padding: '14px 14px' }}>
+                  <p style={{ fontSize: 12, color: '#6b7280', fontWeight: 600, marginBottom: 8 }}>{goal.label}</p>
+                  <p style={{ fontSize: 20, color: '#1a2e24', fontWeight: 800, marginBottom: 8 }}>
+                    {goal.done}
+                    <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 4 }}>/ {goal.total}</span>
+                  </p>
+                  <div style={{ height: 6, background: '#eef1f4', borderRadius: 6, overflow: 'hidden' }}>
+                    <div style={{ width: `${pct}%`, height: '100%', background: `linear-gradient(90deg, ${goal.color}, ${goal.color}bb)`, borderRadius: 6 }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ borderTop: '1px solid #eef1f4', paddingTop: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <Clock size={15} color="#6b7280" />
+              <h3 style={{ fontSize: 14, color: '#1a2e24', fontWeight: 700 }}>Today&apos;s Schedule</h3>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {todaySchedule.map((item, idx) => (
+                <div key={`${item.time}-${idx}`} style={{ display: 'grid', gridTemplateColumns: '70px 1fr auto', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, background: '#fafbfc', border: '1px solid #eef1f4' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: item.color }}>{item.time}</span>
+                  <p style={{ fontSize: 13, color: '#1f2937', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</p>
+                  <span style={{ fontSize: 11, color: '#6b7280', background: '#fff', border: '1px solid #eef1f4', padding: '4px 8px', borderRadius: 999 }}>{item.type}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ background: '#fff', borderRadius: 18, border: '1px solid #eef1f4', padding: 18 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <h3 style={{ fontSize: 14, color: '#1a2e24', fontWeight: 700 }}>Calendar View</h3>
+              <span style={{ fontSize: 11, color: '#6b7280', fontWeight: 600 }}>{calendarMeta.monthLabel}</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, marginBottom: 8 }}>
+              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(day => (
+                <div key={day} style={{ fontSize: 10, color: '#9ca3af', textAlign: 'center', fontWeight: 700 }}>{day}</div>
+              ))}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
+              {calendarMeta.cells.map((day, idx) => {
+                if (!day) return <div key={`empty-${idx}`} />;
+                const isToday = day === calendarMeta.today;
+                const hasEvent = calendarMeta.eventDays.includes(day);
+                return (
+                  <div key={day} style={{ height: 28, borderRadius: 8, border: isToday ? '1px solid #2d6a4f' : '1px solid #eef1f4', background: isToday ? '#f0faf3' : '#fff', fontSize: 11, color: isToday ? '#2d6a4f' : '#4b5563', fontWeight: isToday ? 700 : 500, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                    {day}
+                    {hasEvent && (
+                      <span style={{ position: 'absolute', bottom: 3, width: 4, height: 4, borderRadius: '50%', background: '#2d6a4f' }} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ background: '#fff', borderRadius: 18, border: '1px solid #eef1f4', padding: 18 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <h3 style={{ fontSize: 14, color: '#1a2e24', fontWeight: 700 }}>Reminders</h3>
+              <Bell size={14} color="#6b7280" />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {reminders.map(item => (
+                <button key={item.id} type="button" onClick={() => toggleReminder(item.id)} style={{ textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, width: '100%', border: '1px solid #eef1f4', background: item.done ? '#f0faf3' : '#fafbfc', borderRadius: 12, padding: '10px 12px', cursor: 'pointer' }}>
+                  <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${item.done ? '#2d6a4f' : '#d1d5db'}`, background: item.done ? '#2d6a4f' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {item.done && <CheckCircle size={10} color="#fff" />}
+                  </div>
+                  <span style={{ fontSize: 12, color: item.done ? '#4b5563' : '#1f2937', textDecoration: item.done ? 'line-through' : 'none' }}>{item.text}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ─── Skill Path ─── */}
       <div style={{ background: '#fff', borderRadius: 18, border: '1px solid #eef1f4', padding: 24 }}>
         <h2 style={{ fontSize: 15, fontWeight: 700, color: '#1a2e24', marginBottom: 24 }}>Your Skill Path</h2>
@@ -377,8 +533,11 @@ const StudentDashboard = () => {
 
       <style>{`
         @media (max-width: 1024px) {
-          .dash-main-grid, .chart-grid { grid-template-columns: 1fr !important; }
+          .dash-main-grid, .chart-grid, .planner-grid { grid-template-columns: 1fr !important; }
           .stats-row { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+        @media (max-width: 900px) {
+          .planner-goals-grid { grid-template-columns: 1fr !important; }
         }
         @media (max-width: 640px) {
           .stats-row { grid-template-columns: 1fr !important; }

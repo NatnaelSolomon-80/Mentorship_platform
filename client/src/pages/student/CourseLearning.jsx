@@ -60,9 +60,12 @@ const CourseLearning = () => {
           try {
             const reviewCheck = await apiCheckReview({ mentorId: cRes.data.data.mentorId._id, courseId });
             setHasReviewed(reviewCheck.data.hasReviewed);
-          } catch {}
+          } catch(err) {
+            console.error("not reviewd!")
+          }
         }
       } catch (err) {
+        console.error("Failed to load course content");
         toast.error('Failed to load course content');
       } finally {
         setLoading(false);
@@ -154,7 +157,10 @@ const CourseLearning = () => {
         try {
           const pRes = await apiMarkModule(courseId, activeTest.moduleId);
           setProgress(pRes.data.data);
-        } catch {}
+        } catch(err) {
+          console.error("this is the ultimate problem")
+
+        }
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to submit');

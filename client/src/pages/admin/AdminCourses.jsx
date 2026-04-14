@@ -1,12 +1,18 @@
 import { useEffect, useState } from 'react';
 import DashboardLayout from '../../components/DashboardLayout';
 import PageHeader from '../../components/PageHeader';
-import { apiGetCourses, apiApproveCourse, apiRejectCourse, apiDeleteCourse } from '../../api';
+import { apiGetCourses, apiGetCourse, apiApproveCourse, apiRejectCourse, apiDeleteCourse } from '../../api';
 import toast from 'react-hot-toast';
-import { BookOpen, Check, X, Trash2, Search, Layers, Clock, User } from 'lucide-react';
+import { BookOpen, Check, X, Trash2, Search, Layers, Clock, User, Eye, ExternalLink, Play, FileText, Link as LinkIcon } from 'lucide-react';
 
 const levelColor = { Beginner: '#10b981', Intermediate: '#f59e0b', Advanced: '#ef4444' };
 const levelBg = { Beginner: '#ecfdf5', Intermediate: '#fffbeb', Advanced: '#fef2f2' };
+const lessonMeta = {
+  video: { icon: Play, color: '#2563eb', bg: '#eff6ff' },
+  note: { icon: FileText, color: '#059669', bg: '#ecfdf5' },
+  pdf: { icon: FileText, color: '#d97706', bg: '#fffbeb' },
+  link: { icon: LinkIcon, color: '#7c3aed', bg: '#f5f3ff' },
+};
 
 const AdminCourses = () => {
   const [courses, setCourses] = useState([]);
@@ -14,6 +20,8 @@ const AdminCourses = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [actioning, setActioning] = useState(null);
+  const [viewingCourse, setViewingCourse] = useState(null);
+  const [viewLoading, setViewLoading] = useState(false);
 
   useEffect(() => { load(); }, []);
 
@@ -44,6 +52,20 @@ const AdminCourses = () => {
     try { await apiDeleteCourse(id); toast.success('Course deleted'); await load(); }
     catch { toast.error('Failed'); }
   };
+
+  const openCourseView = async (id) => {
+    setViewLoading(true);
+    try {
+      const res = await apiGetCourse(id);
+      setViewingCourse(res.data.data || null);
+    } catch {
+      toast.error('Failed to load course content');
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
+  const closeCourseView = () => setViewingCourse(null);
 
   const filtered = courses.filter((c) => {
     if (search && !c.title.toLowerCase().includes(search.toLowerCase())) return false;
@@ -152,6 +174,10 @@ const AdminCourses = () => {
 
             {/* Actions */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <button onClick={() => openCourseView(course._id)} disabled={viewLoading}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, background: '#eff6ff', color: '#1d4ed8', fontWeight: 600, fontSize: 13, border: '1px solid #bfdbfe', cursor: 'pointer', transition: 'all 0.2s' }}>
+                <Eye size={14} /> View Content
+              </button>
               {!course.isApproved && (
                 <button onClick={() => handleApprove(course._id)} disabled={!!actioning}
                   style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 10, background: '#ecfdf5', color: '#15803d', fontWeight: 600, fontSize: 13, border: '1px solid #86efac', cursor: 'pointer', transition: 'all 0.2s' }}>
@@ -181,6 +207,89 @@ const AdminCourses = () => {
           </div>
         )}
       </div>
+
+      {viewingCourse && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(3px)', zIndex: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={closeCourseView}>
+          <div style={{ width: 'min(980px, 96vw)', maxHeight: '90vh', overflow: 'auto', background: '#fff', borderRadius: 20, border: '1px solid #e5e7eb', boxShadow: '0 24px 60px rgba(15,23,42,0.22)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ position: 'sticky', top: 0, zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', borderBottom: '1px solid #eef1f4', background: '#fff' }}>
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.6px', margin: '0 0 2px 0' }}>Course Review</p>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#1a2e24' }}>{viewingCourse.title}</h3>
+              </div>
+              <button onClick={closeCourseView} style={{ border: 'none', background: '#f3f4f6', color: '#374151', width: 34, height: 34, borderRadius: 10, cursor: 'pointer', fontWeight: 700 }}>✕</button>
+            </div>
+
+            <div style={{ padding: 22, display: 'grid', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10 }}>
+                <div style={{ background: '#f8fafc', border: '1px solid #eef1f4', borderRadius: 12, padding: '10px 12px' }}><p style={{ margin: 0, fontSize: 11, color: '#9ca3af', fontWeight: 600 }}>Mentor</p><p style={{ margin: '4px 0 0', fontSize: 13, color: '#1f2937', fontWeight: 700 }}>{viewingCourse.mentorId?.name || 'Unknown'}</p></div>
+                <div style={{ background: '#f8fafc', border: '1px solid #eef1f4', borderRadius: 12, padding: '10px 12px' }}><p style={{ margin: 0, fontSize: 11, color: '#9ca3af', fontWeight: 600 }}>Category</p><p style={{ margin: '4px 0 0', fontSize: 13, color: '#1f2937', fontWeight: 700 }}>{viewingCourse.category || 'General'}</p></div>
+                <div style={{ background: '#f8fafc', border: '1px solid #eef1f4', borderRadius: 12, padding: '10px 12px' }}><p style={{ margin: 0, fontSize: 11, color: '#9ca3af', fontWeight: 600 }}>Level</p><p style={{ margin: '4px 0 0', fontSize: 13, color: '#1f2937', fontWeight: 700 }}>{viewingCourse.level || 'Beginner'}</p></div>
+                <div style={{ background: '#f8fafc', border: '1px solid #eef1f4', borderRadius: 12, padding: '10px 12px' }}><p style={{ margin: 0, fontSize: 11, color: '#9ca3af', fontWeight: 600 }}>Modules</p><p style={{ margin: '4px 0 0', fontSize: 13, color: '#1f2937', fontWeight: 700 }}>{viewingCourse.modules?.length || 0}</p></div>
+              </div>
+
+              <div style={{ background: '#fbfdff', border: '1px solid #eef1f4', borderRadius: 14, padding: '14px 16px' }}>
+                <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Course Description</p>
+                <p style={{ margin: 0, fontSize: 14, color: '#4b5563', lineHeight: 1.65 }}>{viewingCourse.description || 'No description provided.'}</p>
+              </div>
+
+              <div>
+                <p style={{ margin: '0 0 10px', fontSize: 13, color: '#374151', fontWeight: 700 }}>Uploaded Content</p>
+                {(viewingCourse.modules?.length || 0) === 0 ? (
+                  <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, padding: 14, color: '#9a3412', fontSize: 13, fontWeight: 600 }}>
+                    This course has no modules/lessons uploaded yet.
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gap: 10 }}>
+                    {(viewingCourse.modules || []).map((mod, modIdx) => (
+                      <div key={mod._id || modIdx} style={{ border: '1px solid #e5e7eb', borderRadius: 14, overflow: 'hidden', background: '#fff' }}>
+                        <div style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#1f2937' }}>Module {modIdx + 1}: {mod.title}</span>
+                          <span style={{ fontSize: 11, color: '#64748b', fontWeight: 700 }}>{mod.lessons?.length || 0} lessons</span>
+                        </div>
+
+                        <div style={{ padding: 10, display: 'grid', gap: 8 }}>
+                          {(mod.lessons || []).length === 0 ? (
+                            <div style={{ fontSize: 12, color: '#9ca3af', padding: '4px 6px' }}>No lessons in this module yet.</div>
+                          ) : (
+                            (mod.lessons || []).map((lesson, lessonIdx) => {
+                              const meta = lessonMeta[lesson.type] || lessonMeta.note;
+                              const Icon = meta.icon;
+                              return (
+                                <div key={lesson._id || lessonIdx} style={{ border: '1px solid #f1f5f9', borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                                  <div style={{ width: 32, height: 32, borderRadius: 9, background: meta.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                    <Icon size={14} color={meta.color} />
+                                  </div>
+                                  <div style={{ minWidth: 0, flex: 1 }}>
+                                    <p style={{ margin: 0, fontSize: 13, color: '#1f2937', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lesson.title}</p>
+                                    <p style={{ margin: '2px 0 0', fontSize: 11, color: '#6b7280' }}>{(lesson.type || 'note').toUpperCase()} {lesson.duration ? `• ${lesson.duration}` : ''}</p>
+                                  </div>
+                                  {lesson.contentUrl ? (
+                                    <a href={lesson.contentUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 700, color: '#1d4ed8', textDecoration: 'none', padding: '6px 9px', borderRadius: 8, border: '1px solid #bfdbfe', background: '#eff6ff' }}>
+                                      Open <ExternalLink size={12} />
+                                    </a>
+                                  ) : (
+                                    <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600 }}>No URL</span>
+                                  )}
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {viewLoading && (
+        <div style={{ position: 'fixed', right: 24, top: 20, background: '#111827', color: '#fff', borderRadius: 12, padding: '10px 14px', zIndex: 80, boxShadow: '0 10px 24px rgba(0,0,0,0.2)', fontSize: 13, fontWeight: 600 }}>
+          Loading course content...
+        </div>
+      )}
     </DashboardLayout>
   );
 };

@@ -291,12 +291,12 @@ const TrustedPartners = () => (
 
 /* ─── Categories ─── */
 const categories = [
-  { icon: Cpu, title: 'Technology', count: '64 courses', color: '#2d6a4f', bg: '#e8f5e9' },
-  { icon: Code, title: 'WebDevleopment', count: '32 courses', color: '#1565c0', bg: '#e3f2fd' },
-  { icon: TrendingUp, title: 'AppDev', count: '18 courses', color: '#6a1b9a', bg: '#f3e5f5' },
-  { icon: BarChart3, title: 'MachineLearning', count: '24 courses', color: '#e65100', bg: '#fff3e0' },
-  { icon: Briefcase, title: 'AI', count: '27 courses', color: '#00695c', bg: '#e0f2f1' },
-  { icon: Users, title: 'Robotics', count: '14 courses', color: '#ad1457', bg: '#fce4ec' },
+  { icon: Cpu, title: 'Technology', count: '64 Courses', color: '#2d6a4f', bg: 'linear-gradient(180deg, #7db694 0%, #ffffff 100%)', accent: '#d9efe1', blurb: 'Build core digital skills with practical, job-ready paths.' },
+  { icon: Code, title: 'Web Development', count: '32 Courses', color: '#1565c0', bg: 'linear-gradient(180deg, #eef5fd 0%, #ffffff 100%)', accent: '#dbeafe', blurb: 'Learn modern web fundamentals with real project work.' },
+  { icon: TrendingUp, title: 'App Development', count: '18 Courses', color: '#6a1b9a', bg: 'linear-gradient(180deg, #f7effb 0%, #ffffff 100%)', accent: '#eddcf7', blurb: 'Turn ideas into apps using structured build steps.' },
+  { icon: BarChart3, title: 'Machine Learning', count: '24 Courses', color: '#e65100', bg: 'linear-gradient(180deg, #fff5e8 0%, #ffffff 100%)', accent: '#fde7ce', blurb: 'Explore models, data, and predictions at your pace.' },
+  { icon: Briefcase, title: 'AI', count: '27 Courses', color: '#00695c', bg: 'linear-gradient(180deg, #edf8f6 0%, #ffffff 100%)', accent: '#d5f0eb', blurb: 'Discover practical AI concepts with clear milestones.' },
+  { icon: Users, title: 'Robotics', count: '14 Courses', color: '#ad1457', bg: 'linear-gradient(180deg, #fdf0f5 0%, #ffffff 100%)', accent: '#f8d9e5', blurb: 'Blend hardware and software into hands-on projects.' },
 ];
 
 const ExploreCategories = () => {
@@ -313,20 +313,36 @@ const ExploreCategories = () => {
             Whether you're looking to break into a new industry or advance in your career, find the perfect course for your journey.
           </p>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 20 }} className="category-grid stagger-children">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 24, alignItems: 'stretch' }} className="category-grid stagger-children">
           {categories.map((cat, i) => (
-            <RevealDiv key={i} className="reveal cat-card" style={{ background: '#fafbfc', border: '1px solid #eef1f4', borderRadius: 18, padding: '30px 20px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.3s ease' }}
+            <RevealDiv key={i} className="reveal cat-card" style={{ background: cat.bg, border: '1px solid rgba(45,106,79,0.08)', borderRadius: 22, padding: 0, textAlign: 'center', cursor: 'pointer', transition: 'all 0.35s ease', boxShadow: '0 10px 30px rgba(15,23,42,0.04)', height: '100%' }}
               onMouseMove={e => { const r = e.currentTarget.getBoundingClientRect(); e.currentTarget.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100) + '%'); e.currentTarget.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100) + '%'); }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-6px)'; e.currentTarget.style.boxShadow = `0 16px 48px ${cat.color}18`; e.currentTarget.style.borderColor = cat.color; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#eef1f4'; }}>
-              <div style={{ width: 56, height: 56, borderRadius: 16, background: cat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', transition: 'transform 0.3s' }}>
-                <cat.icon size={26} color={cat.color} />
-              </div>
-              <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a2e24', marginBottom: 4 }}>{cat.title}</h3>
-              <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 12 }}>{cat.count}</p>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                <span style={{ fontSize: 12, color: cat.color, fontWeight: 600 }}>Explore</span>
-                <ArrowRight size={12} color={cat.color} />
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-8px)'; e.currentTarget.style.boxShadow = `0 18px 50px ${cat.color}18`; e.currentTarget.style.borderColor = `${cat.color}33`; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 10px 30px rgba(15,23,42,0.04)'; e.currentTarget.style.borderColor = 'rgba(45,106,79,0.08)'; }}>
+              <div className="cat-card-inner" style={{ position: 'relative', width: '100%', minHeight: 260, height: '100%' }}>
+                <div className="cat-card-face cat-card-front" style={{ position: 'absolute', inset: 0, padding: '24px 20px', borderRadius: 22, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}>
+                  <div style={{ width: 58, height: 58, borderRadius: 18, background: cat.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, transition: 'transform 0.3s ease, box-shadow 0.3s ease', boxShadow: `inset 0 0 0 1px ${cat.color}14` }}>
+                    <cat.icon size={26} color={cat.color} />
+                  </div>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, color: '#1a2e24', marginBottom: 4, letterSpacing: '-0.2px', lineHeight: 1.2 }}>{cat.title}</h3>
+                  <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 12, letterSpacing: '0.2px' }}>{cat.count}</p>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                    <span style={{ fontSize: 12, color: cat.color, fontWeight: 700 }}>Enroll to course</span>
+                    <ArrowRight size={12} color={cat.color} />
+                  </div>
+                </div>
+
+                <div className="cat-card-face cat-card-back" style={{ position: 'absolute', inset: 0, padding: '24px 20px', borderRadius: 22, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transform: 'rotateY(180deg)', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', background: `linear-gradient(180deg, ${cat.accent} 0%, rgba(255,255,255,0.98) 100%)` }}>
+                  <div style={{ width: 46, height: 46, borderRadius: 14, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, boxShadow: '0 10px 24px rgba(15,23,42,0.08)' }}>
+                    <cat.icon size={22} color={cat.color} />
+                  </div>
+                  <h3 style={{ fontSize: 14, fontWeight: 800, color: '#1a2e24', marginBottom: 8, lineHeight: 1.2 }}>{cat.title}</h3>
+                  <p style={{ fontSize: 12, color: '#5f6b78', lineHeight: 1.45, marginBottom: 14, maxWidth: 150, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{cat.blurb}</p>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 999, background: '#fff', color: cat.color, fontSize: 12, fontWeight: 700, boxShadow: '0 8px 20px rgba(15,23,42,0.06)' }}>
+                    See courses
+                    <ArrowRight size={12} color={cat.color} />
+                  </div>
+                </div>
               </div>
             </RevealDiv>
           ))}
@@ -398,29 +414,36 @@ const HowItWorks = () => {
 const ExpertGuidance = () => {
   const ref = useReveal();
   return (
-    <section style={{ background: '#f8faf9', padding: '100px 0' }}>
+    <section style={{ background: 'linear-gradient(180deg, #f8faf9 0%, #ffffff 100%)', padding: '100px 0' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 32px' }}>
         <div ref={ref} className="reveal" style={{ textAlign: 'center', marginBottom: 60 }}>
           <p style={{ fontSize: 12, fontWeight: 700, color: '#2d6a4f', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: 12 }}>Expert Guidance</p>
           <h2 style={{ fontSize: 38, fontWeight: 800, color: '#1a2e24', marginBottom: 12, letterSpacing: '-0.5px' }}>Guidance from Industry Experts</h2>
-          <p style={{ fontSize: 15, color: '#6b7280', maxWidth: 560, margin: '0 auto', lineHeight: 1.7 }}>Get valuable insights and practical tips from seasoned professionals.</p>
+          <p style={{ fontSize: 15, color: '#6b7280', maxWidth: 560, margin: '0 auto', lineHeight: 1.7 }}>Follow a clear learning flow with curated advice, course structure, and mentor support.</p>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }} className="expert-grid stagger-children">
-          {[{ title: 'Explore Top Courses', desc: 'Discover featured courses or search by industry and skill level.', icon: Search, color: '#2d6a4f', bg: '#e8f5e9' },
-          { title: 'Understand Course Structure', desc: 'Dive into modules, tests, and certification paths before enrolling.', icon: BookOpen, color: '#1565c0', bg: '#e3f2fd' },
-          { title: 'Connect with Mentors', desc: 'Send enrollment requests, chat, and get personalized guidance.', icon: MessageCircle, color: '#6a1b9a', bg: '#f3e5f5' }
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 24, alignItems: 'stretch' }} className="expert-grid stagger-children">
+          {[{ step: '01', title: 'Explore the Right Path', desc: 'Discover featured courses or search by industry and skill level.', icon: Search, color: '#2d6a4f', bg: 'linear-gradient(180deg, #eef8f2 0%, #ffffff 100%)', accent: '#d9efe1' },
+          { step: '02', title: 'Understand the Structure', desc: 'See modules, tests, and certification paths before enrolling.', icon: BookOpen, color: '#1565c0', bg: 'linear-gradient(180deg, #eef5fd 0%, #ffffff 100%)', accent: '#dbeafe' },
+          { step: '03', title: 'Connect with Mentors', desc: 'Send requests, chat, and get personalized guidance.', icon: MessageCircle, color: '#6a1b9a', bg: 'linear-gradient(180deg, #f7effb 0%, #ffffff 100%)', accent: '#eddcf7' }
           ].map((item, i) => (
-            <RevealDiv key={i} className="reveal" style={{ background: '#fff', borderRadius: 20, padding: 32, border: '1px solid #eef1f4', transition: 'all 0.3s ease', cursor: 'pointer' }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-6px)'; e.currentTarget.style.boxShadow = '0 20px 50px rgba(0,0,0,0.06)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
-              <div style={{ width: 52, height: 52, borderRadius: 14, background: item.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-                <item.icon size={24} color={item.color} />
-              </div>
-              <h3 style={{ fontSize: 18, fontWeight: 700, color: '#1a2e24', marginBottom: 8 }}>{item.title}</h3>
-              <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.7, marginBottom: 16 }}>{item.desc}</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 13, color: item.color, fontWeight: 600 }}>Learn more</span>
-                <ArrowRight size={14} color={item.color} />
+            <RevealDiv key={i} className="reveal" style={{ background: item.bg, borderRadius: 22, padding: 0, border: '1px solid rgba(45,106,79,0.08)', transition: 'all 0.35s ease', cursor: 'pointer', boxShadow: '0 10px 30px rgba(15,23,42,0.04)', height: '100%', overflow: 'hidden' }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-8px)'; e.currentTarget.style.boxShadow = `0 22px 56px ${item.color}18`; e.currentTarget.style.borderColor = `${item.color}33`; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 10px 30px rgba(15,23,42,0.04)'; e.currentTarget.style.borderColor = 'rgba(45,106,79,0.08)'; }}>
+              <div style={{ position: 'relative', padding: 24, minHeight: 240, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+                  <div style={{ width: 54, height: 54, borderRadius: 16, background: item.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `inset 0 0 0 1px ${item.color}14` }}>
+                    <item.icon size={24} color={item.color} />
+                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: item.color, background: '#fff', padding: '7px 10px', borderRadius: 999, boxShadow: '0 8px 18px rgba(15,23,42,0.05)' }}>{item.step}</div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ fontSize: 18, fontWeight: 800, color: '#1a2e24', marginBottom: 8, lineHeight: 1.25 }}>{item.title}</h3>
+                  <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.55, marginBottom: 18, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{item.desc}</p>
+                </div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: item.color, fontSize: 13, fontWeight: 700 }}>
+                  Learn more
+                  <ArrowRight size={14} color={item.color} />
+                </div>
               </div>
             </RevealDiv>
           ))}

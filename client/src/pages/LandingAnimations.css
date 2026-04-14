@@ -53,9 +53,31 @@
 @keyframes orbitDot { 0% { transform: rotate(0deg) translateX(120px) rotate(0deg); } 100% { transform: rotate(360deg) translateX(120px) rotate(-360deg); } }
 
 /* ─── Category card hover glow ─── */
-.cat-card { position: relative; overflow: hidden; }
+.cat-card {
+  position: relative;
+  overflow: hidden;
+  perspective: 1200px;
+}
 .cat-card::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(45,106,79,0.08) 0%, transparent 60%); opacity: 0; transition: opacity 0.3s; pointer-events: none; }
 .cat-card:hover::before { opacity: 1; }
+.cat-card-inner {
+  position: relative;
+  width: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.cat-card:hover .cat-card-inner,
+.cat-card:focus-within .cat-card-inner {
+  transform: rotateY(180deg);
+}
+.cat-card-face {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+.cat-card-front,
+.cat-card-back {
+  will-change: transform;
+}
 
 /* ─── Badge bounce ─── */
 .badge-bounce { transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
@@ -87,4 +109,29 @@
 @media (max-width: 480px) {
   .hero-heading { font-size: 28px !important; }
   .category-grid { grid-template-columns: 1fr !important; }
+}
+
+@media (hover: none) {
+  .cat-card:hover .cat-card-inner,
+  .cat-card:focus-within .cat-card-inner {
+    transform: none;
+  }
+
+  .cat-card-inner {
+    transform: none !important;
+  }
+
+  .cat-card-face {
+    position: static !important;
+    transform: none !important;
+  }
+
+  .cat-card-front {
+    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  }
+
+  .cat-card-back {
+    padding-top: 0 !important;
+    margin-top: -6px;
+  }
 }
