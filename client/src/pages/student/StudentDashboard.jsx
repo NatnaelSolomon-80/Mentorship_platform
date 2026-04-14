@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import DashboardLayout from '../../components/DashboardLayout';
 import { useAuth } from '../../context/AuthContext';
 import { apiGetEnrolledCourses, apiGetEnrollmentRequests, apiGetMyBadges, apiGetMyCertificates } from '../../api';
@@ -6,19 +6,25 @@ import { BookOpen, Award, Star, Clock, ArrowRight, TrendingUp, CheckCircle, Zap,
 import { Link } from 'react-router-dom';
 
 /* ─── Mini Bar Chart ─── */
-const BarChart = ({ data, height = 140, barColor = '#2d6a4f' }) => {
+const BarChart = ({ data, height = 140, barColor = '#2d6a4f', animate = false }) => {
   const max = Math.max(...data.map(d => d.value), 1);
+  const [hoveredIndex, setHoveredIndex] = useState(null);
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height, paddingTop: 10 }}>
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height, paddingTop: 10, position: 'relative' }}>
+      {hoveredIndex !== null && data[hoveredIndex] && (
+        <div style={{ position: 'absolute', top: 0, right: 0, background: '#1a2e24', color: '#fff', borderRadius: 12, padding: '8px 10px', boxShadow: '0 12px 30px rgba(0,0,0,0.14)', zIndex: 2 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, margin: '0 0 2px 0' }}>{data[hoveredIndex].label}</p>
+          <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', margin: 0 }}>{data[hoveredIndex].value} hours studied</p>
+        </div>
+      )}
       {data.map((d, i) => (
-        <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+        <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }} onMouseEnter={() => setHoveredIndex(i)} onMouseLeave={() => setHoveredIndex(null)} title={`${d.label}: ${d.value} hours`}>
           <span style={{ fontSize: 11, fontWeight: 700, color: '#374151' }}>{d.value}</span>
           <div style={{
             width: '100%', borderRadius: '6px 6px 0 0',
             background: `linear-gradient(180deg, ${barColor}, ${barColor}aa)`,
-            height: `${Math.max((d.value / max) * (height - 40), 6)}px`,
-            transition: 'height 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)',
-            minHeight: 6,
+            height: `${Math.max((d.value / max) * (height - 40), 3)}px`,
+            transition: animate ? 'height 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'height 0.2s ease',
           }} />
           <span style={{ fontSize: 10, color: '#9ca3af', fontWeight: 600 }}>{d.label}</span>
         </div>
@@ -28,44 +34,96 @@ const BarChart = ({ data, height = 140, barColor = '#2d6a4f' }) => {
 };
 
 /* ─── Circular Progress Ring ─── */
-const ProgressRing = ({ value, max, size = 80, color = '#2d6a4f' }) => {
+const ProgressRing = ({ value, max, size = 80, color = '#2d6a4f', label = '', detail = '', animate = false }) => {
   const pct = max ? Math.round((value / max) * 100) : 0;
   const r = (size - 10) / 2;
   const circ = 2 * Math.PI * r;
   const offset = circ - (pct / 100) * circ;
+  const [hovered, setHovered] = useState(false);
+
   return (
-    <div style={{ position: 'relative', width: size, height: size }}>
+    <div
+      style={{ position: 'relative', width: size, height: size, cursor: 'default' }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f3f4f6" strokeWidth={8} />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={8}
           strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
-          style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)' }} />
+          style={{ transition: animate ? 'stroke-dashoffset 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none' }} />
       </svg>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <span style={{ fontSize: 16, fontWeight: 800, color: '#1a2e24' }}>{pct}%</span>
       </div>
+      {hovered && (
+        <div style={{ position: 'absolute', top: -8, left: '50%', transform: 'translate(-50%, -100%)', background: '#1a2e24', color: '#fff', borderRadius: 12, padding: '8px 10px', minWidth: 120, boxShadow: '0 12px 30px rgba(0,0,0,0.14)', zIndex: 2, pointerEvents: 'none' }}>
+          <p style={{ fontSize: 11, fontWeight: 700, margin: '0 0 2px 0' }}>{label}</p>
+          <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', margin: 0 }}>{detail}</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const useRevealOnce = (threshold = 0.25) => {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setVisible(true);
+        observer.unobserve(entry.target);
+      }
+    }, { threshold });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [threshold]);
+
+  return [ref, visible];
+};
+
+const RevealSection = ({ children, className = '', style = {}, threshold = 0.12, delay = 0 }) => {
+  const [ref, visible] = useRevealOnce(threshold);
+  return (
+    <div
+      ref={ref}
+      className={className}
+      style={{
+        ...style,
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : 'translateY(26px)',
+        transition: `opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms`,
+      }}
+    >
+      {children}
     </div>
   );
 };
 
 /* ─── Enhanced Stat Card ─── */
-const EnhancedStatCard = ({ icon: Icon, label, value, target, color, bg, desc, delay = 0 }) => {
+const EnhancedStatCard = ({ icon, label, value, target, color, bg, desc, delay = 0, to }) => {
+  const IconComponent = icon;
   const [show, setShow] = useState(false);
   useEffect(() => { const t = setTimeout(() => setShow(true), delay); return () => clearTimeout(t); }, [delay]);
   const pct = target ? Math.min(Math.round((value / target) * 100), 100) : null;
-  return (
-    <div style={{
-      background: bg, borderRadius: 18, padding: '22px 20px',
-      border: `1px solid ${color}18`, position: 'relative', overflow: 'hidden',
-      transition: 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
-      opacity: show ? 1 : 0, transform: show ? 'translateY(0)' : 'translateY(20px)',
-    }}
-      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = `0 12px 32px ${color}18`; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
-    >
+  const cardStyle = {
+    background: bg, borderRadius: 18, padding: '22px 20px',
+    border: `1px solid ${color}18`, position: 'relative', overflow: 'hidden',
+    transition: 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
+    opacity: show ? 1 : 0, transform: show ? 'translateY(0)' : 'translateY(20px)',
+    textDecoration: 'none', display: 'block',
+    cursor: to ? 'pointer' : 'default',
+  };
+
+  const cardBody = (
+    <>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ width: 42, height: 42, borderRadius: 12, background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Icon size={20} color={color} />
+          <IconComponent size={20} color={color} />
         </div>
         {target && (
           <span style={{ fontSize: 10, fontWeight: 700, color, background: `${color}12`, padding: '3px 8px', borderRadius: 20 }}>
@@ -88,12 +146,36 @@ const EnhancedStatCard = ({ icon: Icon, label, value, target, color, bg, desc, d
         </div>
       )}
       {desc && <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>{desc}</p>}
+    </>
+  );
+
+  const hoverIn = e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = `0 12px 32px ${color}18`; };
+  const hoverOut = e => { e.currentTarget.style.transform = show ? 'translateY(0)' : 'translateY(20px)'; e.currentTarget.style.boxShadow = 'none'; };
+
+  if (to) {
+    return (
+      <Link to={to} style={cardStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
+        {cardBody}
+      </Link>
+    );
+  }
+
+  return (
+    <div style={{
+      ...cardStyle,
+      cursor: 'default',
+    }}
+      onMouseEnter={hoverIn}
+      onMouseLeave={hoverOut}
+    >
+      {cardBody}
     </div>
   );
 };
 
 /* ─── Skill Path Step ─── */
-const PathStep = ({ label, icon: Icon, color, active, delay = 0 }) => {
+const PathStep = ({ label, icon, color, active, delay = 0 }) => {
+  const IconComponent = icon;
   const [show, setShow] = useState(false);
   useEffect(() => { const t = setTimeout(() => setShow(true), delay); return () => clearTimeout(t); }, [delay]);
   return (
@@ -105,7 +187,7 @@ const PathStep = ({ label, icon: Icon, color, active, delay = 0 }) => {
         boxShadow: active ? `0 6px 20px ${color}35` : 'none',
         transition: 'all 0.4s',
       }}>
-        <Icon size={22} color={active ? '#fff' : '#9ca3af'} />
+        <IconComponent size={22} color={active ? '#fff' : '#9ca3af'} />
       </div>
       <span style={{ fontSize: 12, fontWeight: 600, color: active ? color : '#9ca3af', textAlign: 'center' }}>{label}</span>
     </div>
@@ -115,16 +197,39 @@ const PathConnector = ({ active }) => (
   <div style={{ flex: 1, height: 3, background: active ? 'linear-gradient(90deg, #2d6a4f, #52b788)' : '#eef1f4', marginBottom: 28, maxWidth: 60, borderRadius: 3 }} />
 );
 
+const normalizeEnrolledCourses = (items) => {
+  const list = Array.isArray(items) ? items : [];
+  return list
+    .map((item) => {
+      if (!item) return null;
+      if (item.courseId && typeof item.courseId === 'object') {
+        return {
+          ...item.courseId,
+          enrolledAt: item.createdAt || item.courseId.createdAt,
+        };
+      }
+      return item;
+    })
+    .filter((course) => course && course._id);
+};
+
 const StudentDashboard = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState({ courses: 0, certificates: 0, badges: 0, pending: 0 });
   const [enrolledCourses, setEnrolledCourses] = useState([]);
   const [reminders, setReminders] = useState([
-    { id: 1, text: 'Complete one lesson before 7:00 PM', done: false },
-    { id: 2, text: 'Review quiz notes for 20 minutes', done: false },
-    { id: 3, text: 'Message your mentor with one question', done: true },
+    { id: 1, text: 'Complete one lesson before 7:00 PM', done: false, time: 'Today 7:00 PM' },
+    { id: 2, text: 'Review quiz notes for 20 minutes', done: false, time: 'Today 8:00 PM' },
+    { id: 3, text: 'Message your mentor with one question', done: true, time: 'Tomorrow 9:00 AM' },
   ]);
+  const [scheduleItems, setScheduleItems] = useState([]);
+  const [newReminder, setNewReminder] = useState('');
+  const [newSchedule, setNewSchedule] = useState({ time: '', title: '', type: 'Study' });
+  const [editingReminderId, setEditingReminderId] = useState(null);
+  const [editingScheduleId, setEditingScheduleId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activityRef, activityVisible] = useRevealOnce(0.25);
+  const [progressRef, progressVisible] = useRevealOnce(0.25);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -132,9 +237,10 @@ const StudentDashboard = () => {
         const [coursesRes, certsRes, badgesRes, reqsRes] = await Promise.all([
           apiGetEnrolledCourses(), apiGetMyCertificates(), apiGetMyBadges(), apiGetEnrollmentRequests(),
         ]);
-        setEnrolledCourses(coursesRes.data.data || []);
+        const enrolled = normalizeEnrolledCourses(coursesRes.data.data || []);
+        setEnrolledCourses(enrolled);
         setStats({
-          courses: coursesRes.data.data?.length || 0,
+          courses: enrolled.length,
           certificates: certsRes.data.data?.length || 0,
           badges: badgesRes.data.data?.length || 0,
           pending: reqsRes.data.data?.filter(r => r.status === 'pending').length || 0,
@@ -191,6 +297,10 @@ const StudentDashboard = () => {
     }));
   }, [enrolledCourses]);
 
+  useEffect(() => {
+    setScheduleItems(todaySchedule.map(item => ({ ...item, id: `${item.time}-${item.title}` })));
+  }, [todaySchedule]);
+
   const calendarMeta = useMemo(() => {
     const now = new Date();
     const year = now.getFullYear();
@@ -212,6 +322,41 @@ const StudentDashboard = () => {
 
   const toggleReminder = (id) => {
     setReminders(prev => prev.map(r => (r.id === id ? { ...r, done: !r.done } : r)));
+  };
+
+  const addReminder = () => {
+    const text = newReminder.trim();
+    if (!text) return;
+    setReminders(prev => [...prev, { id: Date.now(), text, done: false, time: 'Soon' }]);
+    setNewReminder('');
+  };
+
+  const updateReminderText = (id, text) => {
+    setReminders(prev => prev.map(r => (r.id === id ? { ...r, text } : r)));
+  };
+
+  const removeReminder = (id) => {
+    setReminders(prev => prev.filter(r => r.id !== id));
+  };
+
+  const addScheduleItem = () => {
+    if (!newSchedule.time.trim() || !newSchedule.title.trim()) return;
+    setScheduleItems(prev => [...prev, {
+      id: Date.now(),
+      time: newSchedule.time.trim(),
+      title: newSchedule.title.trim(),
+      type: newSchedule.type,
+      color: ['#2d6a4f', '#1565c0', '#e65100', '#6a1b9a'][prev.length % 4],
+    }]);
+    setNewSchedule({ time: '', title: '', type: 'Study' });
+  };
+
+  const updateScheduleItem = (id, patch) => {
+    setScheduleItems(prev => prev.map(item => (item.id === id ? { ...item, ...patch } : item)));
+  };
+
+  const removeScheduleItem = (id) => {
+    setScheduleItems(prev => prev.filter(item => item.id !== id));
   };
 
   if (loading) return (
@@ -251,17 +396,17 @@ const StudentDashboard = () => {
       </div>
 
       {/* ─── Stat Cards with Progress ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }} className="stats-row">
-        <EnhancedStatCard icon={BookOpen} label="Enrolled Courses" value={stats.courses} target={5} color="#2d6a4f" bg="#f0faf3" delay={0} />
-        <EnhancedStatCard icon={Award} label="Certificates" value={stats.certificates} target={3} color="#e65100" bg="#fff8f0" delay={100} />
-        <EnhancedStatCard icon={Star} label="Badges Earned" value={stats.badges} target={10} color="#1565c0" bg="#eff6ff" delay={200} />
-        <EnhancedStatCard icon={Clock} label="Pending Requests" value={stats.pending} color="#6a1b9a" bg="#faf5ff" delay={300} desc={stats.pending > 0 ? '⏳ Waiting for approval' : '✅ All approved'} />
-      </div>
+      <RevealSection style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }} className="stats-row" delay={40}>
+        <EnhancedStatCard to="/student/courses" icon={BookOpen} label="Enrolled Courses" value={stats.courses} target={5} color="#2d6a4f" bg="#f0faf3" delay={0} />
+        <EnhancedStatCard to="/student/certificates" icon={Award} label="Certificates" value={stats.certificates} target={3} color="#e65100" bg="#fff8f0" delay={100} />
+        <EnhancedStatCard to="/student/badges" icon={Star} label="Badges Earned" value={stats.badges} target={10} color="#1565c0" bg="#eff6ff" delay={200} />
+        <EnhancedStatCard to="/student/courses" icon={Clock} label="Pending Requests" value={stats.pending} color="#6a1b9a" bg="#faf5ff" delay={300} desc={stats.pending > 0 ? '⏳ Waiting for approval' : '✅ All approved'} />
+      </RevealSection>
 
       {/* ─── Charts + Overview Row ─── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 28 }} className="chart-grid">
         {/* Learning Activity Bar Chart */}
-        <div style={{ background: '#fff', borderRadius: 18, border: '1px solid #eef1f4', padding: 24 }}>
+        <div ref={activityRef} style={{ background: '#fff', borderRadius: 18, border: '1px solid #eef1f4', padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
             <div>
               <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1a2e24', marginBottom: 2 }}>Learning Activity</h3>
@@ -272,11 +417,11 @@ const StudentDashboard = () => {
               <span style={{ fontSize: 12, fontWeight: 700, color: '#2d6a4f' }}>{totalHours}h total</span>
             </div>
           </div>
-          <BarChart data={weeklyData} barColor="#2d6a4f" />
+          <BarChart data={weeklyData} barColor="#2d6a4f" animate={activityVisible} />
         </div>
 
         {/* Progress Overview */}
-        <div style={{ background: '#fff', borderRadius: 18, border: '1px solid #eef1f4', padding: 24 }}>
+        <div ref={progressRef} style={{ background: '#fff', borderRadius: 18, border: '1px solid #eef1f4', padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
             <div>
               <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1a2e24', marginBottom: 2 }}>Overall Progress</h3>
@@ -287,9 +432,9 @@ const StudentDashboard = () => {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 24, justifyContent: 'center', marginBottom: 20 }}>
-            <ProgressRing value={stats.courses} max={5} color="#2d6a4f" />
-            <ProgressRing value={stats.certificates} max={3} color="#e65100" />
-            <ProgressRing value={stats.badges} max={10} color="#1565c0" />
+            <ProgressRing value={stats.courses} max={5} color="#2d6a4f" label="Courses" detail={`${stats.courses} of 5 completed`} animate={progressVisible} />
+            <ProgressRing value={stats.certificates} max={3} color="#e65100" label="Certificates" detail={`${stats.certificates} of 3 earned`} animate={progressVisible} />
+            <ProgressRing value={stats.badges} max={10} color="#1565c0" label="Badges" detail={`${stats.badges} of 10 unlocked`} animate={progressVisible} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 24 }}>
             {[{ label: 'Courses', color: '#2d6a4f' }, { label: 'Certs', color: '#e65100' }, { label: 'Badges', color: '#1565c0' }].map(l => (
@@ -303,7 +448,7 @@ const StudentDashboard = () => {
       </div>
 
       {/* ─── Courses + Quick Actions ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, marginBottom: 20 }} className="dash-main-grid">
+      <RevealSection style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, marginBottom: 20 }} className="dash-main-grid" delay={80}>
         {/* My Courses */}
         <div style={{ background: '#fff', borderRadius: 18, border: '1px solid #eef1f4', padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -420,10 +565,10 @@ const StudentDashboard = () => {
             </div>
           </div>
         </div>
-      </div>
+      </RevealSection>
 
       {/* ─── Study Planner ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, marginBottom: 20 }} className="planner-grid">
+      <RevealSection style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, marginBottom: 20 }} className="planner-grid" delay={110}>
         <div style={{ background: '#fff', borderRadius: 18, border: '1px solid #eef1f4', padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
             <div>
@@ -458,12 +603,51 @@ const StudentDashboard = () => {
               <Clock size={15} color="#6b7280" />
               <h3 style={{ fontSize: 14, color: '#1a2e24', fontWeight: 700 }}>Today&apos;s Schedule</h3>
             </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr auto auto', gap: 8, marginBottom: 10 }}>
+              <input
+                value={newSchedule.time}
+                onChange={e => setNewSchedule(prev => ({ ...prev, time: e.target.value }))}
+                placeholder="09:00"
+                style={{ border: '1px solid #d5e8da', borderRadius: 10, padding: '8px 10px', fontSize: 12, outline: 'none' }}
+              />
+              <input
+                value={newSchedule.title}
+                onChange={e => setNewSchedule(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="New schedule task"
+                style={{ border: '1px solid #d5e8da', borderRadius: 10, padding: '8px 10px', fontSize: 12, outline: 'none' }}
+              />
+              <select
+                value={newSchedule.type}
+                onChange={e => setNewSchedule(prev => ({ ...prev, type: e.target.value }))}
+                style={{ border: '1px solid #d5e8da', borderRadius: 10, padding: '8px 10px', fontSize: 12, outline: 'none', background: '#fff' }}
+              >
+                <option>Study</option>
+                <option>Lesson</option>
+                <option>Practice</option>
+                <option>Meeting</option>
+              </select>
+              <button type="button" onClick={addScheduleItem} style={{ border: 'none', background: '#2d6a4f', color: '#fff', borderRadius: 10, padding: '8px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                Add
+              </button>
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {todaySchedule.map((item, idx) => (
-                <div key={`${item.time}-${idx}`} style={{ display: 'grid', gridTemplateColumns: '70px 1fr auto', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, background: '#fafbfc', border: '1px solid #eef1f4' }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: item.color }}>{item.time}</span>
-                  <p style={{ fontSize: 13, color: '#1f2937', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</p>
+              {scheduleItems.map((item) => (
+                <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '70px 1fr auto auto', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, background: '#fafbfc', border: '1px solid #eef1f4' }}>
+                  {editingScheduleId === item.id ? (
+                    <input value={item.time} onChange={e => updateScheduleItem(item.id, { time: e.target.value })} style={{ fontSize: 12, border: '1px solid #d5e8da', borderRadius: 8, padding: '6px 8px', color: item.color, fontWeight: 700 }} />
+                  ) : (
+                    <span style={{ fontSize: 12, fontWeight: 700, color: item.color }}>{item.time}</span>
+                  )}
+                  {editingScheduleId === item.id ? (
+                    <input value={item.title} onChange={e => updateScheduleItem(item.id, { title: e.target.value })} style={{ fontSize: 13, border: '1px solid #d5e8da', borderRadius: 8, padding: '6px 8px', fontWeight: 600 }} />
+                  ) : (
+                    <p style={{ fontSize: 13, color: '#1f2937', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</p>
+                  )}
                   <span style={{ fontSize: 11, color: '#6b7280', background: '#fff', border: '1px solid #eef1f4', padding: '4px 8px', borderRadius: 999 }}>{item.type}</span>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button type="button" onClick={() => setEditingScheduleId(editingScheduleId === item.id ? null : item.id)} style={{ border: 'none', background: '#eff6ff', color: '#1565c0', borderRadius: 8, padding: '6px 8px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{editingScheduleId === item.id ? 'Done' : 'Edit'}</button>
+                    <button type="button" onClick={() => removeScheduleItem(item.id)} style={{ border: 'none', background: '#fee2e2', color: '#b91c1c', borderRadius: 8, padding: '6px 8px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Del</button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -503,22 +687,42 @@ const StudentDashboard = () => {
               <h3 style={{ fontSize: 14, color: '#1a2e24', fontWeight: 700 }}>Reminders</h3>
               <Bell size={14} color="#6b7280" />
             </div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              <input
+                value={newReminder}
+                onChange={e => setNewReminder(e.target.value)}
+                placeholder="Add reminder"
+                style={{ flex: 1, border: '1px solid #d5e8da', borderRadius: 10, padding: '8px 10px', fontSize: 12, outline: 'none' }}
+              />
+              <button type="button" onClick={addReminder} style={{ border: 'none', background: '#2d6a4f', color: '#fff', borderRadius: 10, padding: '8px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Add</button>
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {reminders.map(item => (
-                <button key={item.id} type="button" onClick={() => toggleReminder(item.id)} style={{ textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, width: '100%', border: '1px solid #eef1f4', background: item.done ? '#f0faf3' : '#fafbfc', borderRadius: 12, padding: '10px 12px', cursor: 'pointer' }}>
-                  <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${item.done ? '#2d6a4f' : '#d1d5db'}`, background: item.done ? '#2d6a4f' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <div key={item.id} style={{ textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, width: '100%', border: '1px solid #eef1f4', background: item.done ? '#f0faf3' : '#fafbfc', borderRadius: 12, padding: '10px 12px' }}>
+                  <button type="button" onClick={() => toggleReminder(item.id)} style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${item.done ? '#2d6a4f' : '#d1d5db'}`, background: item.done ? '#2d6a4f' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', padding: 0 }}>
                     {item.done && <CheckCircle size={10} color="#fff" />}
-                  </div>
-                  <span style={{ fontSize: 12, color: item.done ? '#4b5563' : '#1f2937', textDecoration: item.done ? 'line-through' : 'none' }}>{item.text}</span>
-                </button>
+                  </button>
+                  {editingReminderId === item.id ? (
+                    <input
+                      value={item.text}
+                      onChange={e => updateReminderText(item.id, e.target.value)}
+                      style={{ flex: 1, fontSize: 12, border: '1px solid #d5e8da', borderRadius: 8, padding: '6px 8px', outline: 'none' }}
+                    />
+                  ) : (
+                    <span style={{ flex: 1, fontSize: 12, color: item.done ? '#4b5563' : '#1f2937', textDecoration: item.done ? 'line-through' : 'none' }}>{item.text}</span>
+                  )}
+                  <span style={{ fontSize: 10, color: '#9ca3af' }}>{item.time}</span>
+                  <button type="button" onClick={() => setEditingReminderId(editingReminderId === item.id ? null : item.id)} style={{ border: 'none', background: '#eff6ff', color: '#1565c0', borderRadius: 8, padding: '6px 8px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{editingReminderId === item.id ? 'Done' : 'Edit'}</button>
+                  <button type="button" onClick={() => removeReminder(item.id)} style={{ border: 'none', background: '#fee2e2', color: '#b91c1c', borderRadius: 8, padding: '6px 8px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Del</button>
+                </div>
               ))}
             </div>
           </div>
         </div>
-      </div>
+      </RevealSection>
 
       {/* ─── Skill Path ─── */}
-      <div style={{ background: '#fff', borderRadius: 18, border: '1px solid #eef1f4', padding: 24 }}>
+      <RevealSection style={{ background: '#fff', borderRadius: 18, border: '1px solid #eef1f4', padding: 24 }} delay={130}>
         <h2 style={{ fontSize: 15, fontWeight: 700, color: '#1a2e24', marginBottom: 24 }}>Your Skill Path</h2>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0 }}>
           <PathStep label="Enroll" icon={BookOpen} color="#2d6a4f" active={stats.courses > 0} delay={100} />
@@ -529,7 +733,7 @@ const StudentDashboard = () => {
           <PathConnector active={stats.certificates > 0} />
           <PathStep label="Get Hired" icon={TrendingUp} color="#6a1b9a" active={stats.certificates > 0} delay={550} />
         </div>
-      </div>
+      </RevealSection>
 
       <style>{`
         @media (max-width: 1024px) {

@@ -2,6 +2,8 @@ const Test = require('../models/Test');
 const Result = require('../models/Result');
 const Module = require('../models/Module');
 
+const QUIZ_RETRY_LOCK_MS = 24 * 60 * 60 * 1000;
+
 // @desc   Create test
 // @route  POST /api/tests
 const createTest = async (req, res) => {
@@ -68,8 +70,29 @@ const submitTest = async (req, res) => {
     const test = await Test.findById(req.params.id);
     if (!test) return res.status(404).json({ success: false, message: 'Test not found' });
 
-    // Delete any previous attempt to allow retry
-    await Result.deleteMany({ studentId: req.user._id, testId: test._id });
+    const latestAttempt = await Result.findOne({
+      studentId: req.user._id,
+      testId: test._id,
+    }).sort({ createdAt: -1 });
+
+    if (latestAttempt && !latestAttempt.passed) {
+      const retryAt = new Date(latestAttempt.createdAt.getTime() + QUIZ_RETRY_LOCK_MS);
+      if (Date.now() < retryAt.getTime()) {
+        return res.status(429).json({
+          success: false,
+          message: `You did not pass this quiz. Please read again and try again after ${retryAt.toLocaleString()}.`,
+          code: 'QUIZ_RETRY_LOCKED',
+          data: {
+            retryAt,
+            cooldownHours: 24,
+          },
+        });
+      }
+    }
+
+    if (!Array.isArray(answers) || answers.length !== test.questions.length) {
+      return res.status(400).json({ success: false, message: 'Please answer all quiz questions before submitting.' });
+    }
 
     // Calculate score
     let correct = 0;
@@ -96,7 +119,7 @@ const submitTest = async (req, res) => {
       title: passed ? `Quiz Passed! 🎉 (${score}%)` : `Quiz Not Passed (${score}%)`,
       message: passed
         ? `You scored ${score}% on "${test.title}" — great job! The next module is now unlocked.`
-        : `You scored ${score}% on "${test.title}" (need ${test.passingScore || 70}%). You can retry anytime.`,
+        : `You scored ${score}% on "${test.title}" (need ${test.passingScore || 70}%). Please read again and try again after 24 hours.`,
       link: courseId ? `/student/course/${courseId}` : '',
     });
 
@@ -113,6 +136,7 @@ const submitTest = async (req, res) => {
       data: {
         score, passed, total: test.questions.length, correct,
         passingScore: test.passingScore || 70,
+        retryAvailableAt: passed ? null : new Date(Date.now() + QUIZ_RETRY_LOCK_MS),
         correctAnswers,
       },
     });
@@ -128,7 +152,9 @@ const getResults = async (req, res) => {
     const results = await Result.find({
       studentId: req.user._id,
       courseId: req.params.courseId,
-    }).populate('testId', 'title type');
+    })
+      .populate('testId', 'title type')
+      .sort({ createdAt: -1 });
     res.json({ success: true, data: results });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

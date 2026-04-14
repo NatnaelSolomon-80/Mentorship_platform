@@ -10,6 +10,21 @@ const typeIcon = { video: Play, note: FileText, pdf: FileText, link: LinkIcon };
 const typeColor = { video: '#3b82f6', note: '#10b981', pdf: '#f59e0b', link: '#8b5cf6' };
 const typeBg = { video: '#eff6ff', note: '#ecfdf5', pdf: '#fffbeb', link: '#f5f3ff' };
 
+const RETRY_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
+const formatDateTime = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+};
+
 const CourseLearning = () => {
   const { courseId } = useParams();
   const [course, setCourse] = useState(null);
@@ -60,11 +75,11 @@ const CourseLearning = () => {
           try {
             const reviewCheck = await apiCheckReview({ mentorId: cRes.data.data.mentorId._id, courseId });
             setHasReviewed(reviewCheck.data.hasReviewed);
-          } catch(err) {
+          } catch {
             console.error("not reviewd!")
           }
         }
-      } catch (err) {
+      } catch {
         console.error("Failed to load course content");
         toast.error('Failed to load course content');
       } finally {
@@ -76,6 +91,32 @@ const CourseLearning = () => {
 
   const isLessonDone = (lessonId) => progress?.completedLessons?.some((l) => l === lessonId || l._id === lessonId);
   const isModuleDone = (moduleId) => progress?.completedModules?.some((m) => m === moduleId || m._id === moduleId);
+
+  const latestResultByTest = results.reduce((acc, result) => {
+    const testKey = result?.testId?._id || result?.testId;
+    if (!testKey) return acc;
+    if (!acc[testKey]) {
+      acc[testKey] = result;
+      return acc;
+    }
+
+    const currentTs = new Date(acc[testKey].createdAt || 0).getTime();
+    const candidateTs = new Date(result.createdAt || 0).getTime();
+    if (candidateTs > currentTs) {
+      acc[testKey] = result;
+    }
+    return acc;
+  }, {});
+
+  const getRetryInfo = (testId) => {
+    if (!testId) return { locked: false, retryAt: null };
+    const latest = latestResultByTest[testId];
+    if (!latest || latest.passed) return { locked: false, retryAt: null };
+
+    const retryAt = new Date(new Date(latest.createdAt).getTime() + RETRY_COOLDOWN_MS);
+    const locked = Date.now() < retryAt.getTime();
+    return { locked, retryAt };
+  };
 
   // Strict gating: Module N+1 unlocked only if Module N test is passed (or Module N has no test and all lessons done)
   const isModuleUnlocked = (moduleIndex) => {
@@ -157,13 +198,26 @@ const CourseLearning = () => {
         try {
           const pRes = await apiMarkModule(courseId, activeTest.moduleId);
           setProgress(pRes.data.data);
-        } catch(err) {
+        } catch {
           console.error("this is the ultimate problem")
 
         }
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to submit');
+      const apiMessage = err.response?.data?.message || 'Failed to submit';
+      toast.error(apiMessage);
+
+      if (err.response?.data?.code === 'QUIZ_RETRY_LOCKED') {
+        setTestResult({
+          passed: false,
+          score: 0,
+          total: activeTest?.questions?.length || 0,
+          correct: 0,
+          retryAvailableAt: err.response?.data?.data?.retryAt,
+          lockedMessage: apiMessage,
+          correctAnswers: null,
+        });
+      }
     } finally {
       setSubmittingTest(false);
     }
@@ -432,6 +486,15 @@ const CourseLearning = () => {
                     <p style={{ fontSize: 14, color: '#6b7280' }}>
                       {testResult.correct}/{testResult.total} correct answers
                     </p>
+
+                    {!testResult.passed && testResult.retryAvailableAt && (
+                      <p style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: '#92400e' }}>
+                        Read again and try again after {formatDateTime(testResult.retryAvailableAt)}.
+                      </p>
+                    )}
+                    {!testResult.passed && testResult.lockedMessage && (
+                      <p style={{ marginTop: 8, fontSize: 12, color: '#b45309' }}>{testResult.lockedMessage}</p>
+                    )}
                   </div>
 
                   {/* Correct Answers Review */}
@@ -462,7 +525,7 @@ const CourseLearning = () => {
                   )}
 
                   <div style={{ display: 'flex', gap: 10 }}>
-                    {!testResult.passed && (
+                    {!testResult.passed && (!testResult.retryAvailableAt || Date.now() >= new Date(testResult.retryAvailableAt).getTime()) && (
                       <button onClick={handleRetryTest}
                         style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', borderRadius: 12, background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#fff', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer' }}>
                         <RotateCcw size={16} /> Retry Test
@@ -552,7 +615,7 @@ const CourseLearning = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {modules.map((mod, modIndex) => {
                 const modTest = tests.find((t) => t.moduleId === mod._id);
-                const modTestResult = modTest ? results.find(r => (r.testId?._id || r.testId) === modTest._id) : null;
+                const modTestResult = modTest ? latestResultByTest[modTest._id] : null;
                 const unlocked = isModuleUnlocked(modIndex);
                 const done = isModuleDone(mod._id);
                 const allLessonsDone = (mod.lessons || []).every(l => isLessonDone(l._id));
@@ -608,22 +671,31 @@ const CourseLearning = () => {
                         {/* Module Quiz */}
                         {modTest && (() => {
                           const quizUnlocked = allLessonsDone;
+                          const retryInfo = getRetryInfo(modTest._id);
                           return (
                             <button
-                              onClick={() => { if(quizUnlocked) { setActiveTest(modTest); setActiveLesson(null); setTestResult(null); setAnswers({}); } }}
-                              disabled={!quizUnlocked}
+                              onClick={() => {
+                                if (quizUnlocked && !retryInfo.locked) {
+                                  setActiveTest(modTest);
+                                  setActiveLesson(null);
+                                  setTestResult(null);
+                                  setAnswers({});
+                                }
+                              }}
+                              disabled={!quizUnlocked || retryInfo.locked}
                               style={{
                                 width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px 10px 24px',
-                                border: 'none', cursor: quizUnlocked ? 'pointer' : 'not-allowed', textAlign: 'left', transition: 'all 0.15s',
+                                border: 'none', cursor: quizUnlocked && !retryInfo.locked ? 'pointer' : 'not-allowed', textAlign: 'left', transition: 'all 0.15s',
                                 background: activeTest?._id === modTest._id ? '#fffbeb' : 'transparent',
                                 borderLeft: activeTest?._id === modTest._id ? '3px solid #f59e0b' : '3px solid transparent',
-                                opacity: quizUnlocked ? 1 : 0.6,
+                                opacity: quizUnlocked && !retryInfo.locked ? 1 : 0.6,
                               }}
                             >
-                              {!quizUnlocked ? <Lock size={13} color="#d1d5db" /> : <FileText size={13} color="#f59e0b" />}
+                              {!quizUnlocked || retryInfo.locked ? <Lock size={13} color="#d1d5db" /> : <FileText size={13} color="#f59e0b" />}
                               <span style={{ fontSize: 12, color: '#92400e', flex: 1, fontWeight: 600 }}>📝 Module Quiz</span>
                               {modTestResult?.passed && <span style={{ fontSize: 10, color: '#15803d', fontWeight: 700 }}>✅ {modTestResult.score}%</span>}
                               {modTestResult && !modTestResult.passed && <span style={{ fontSize: 10, color: '#dc2626', fontWeight: 700 }}>❌ {modTestResult.score}%</span>}
+                              {retryInfo.locked && <span style={{ fontSize: 10, color: '#92400e', fontWeight: 700 }}>Retry {formatDateTime(retryInfo.retryAt)}</span>}
                             </button>
                           );
                         })()}
@@ -644,19 +716,33 @@ const CourseLearning = () => {
 
             {/* Final Test */}
             {finalTest && (
+              (() => {
+                const finalRetryInfo = getRetryInfo(finalTest._id);
+                return (
               <button
-                onClick={() => { setActiveTest(finalTest); setActiveLesson(null); setTestResult(null); setAnswers({}); }}
+                onClick={() => {
+                  if (!finalRetryInfo.locked) {
+                    setActiveTest(finalTest);
+                    setActiveLesson(null);
+                    setTestResult(null);
+                    setAnswers({});
+                  }
+                }}
+                disabled={finalRetryInfo.locked}
                 style={{
                   width: '100%', marginTop: 14, padding: '14px 16px', borderRadius: 14,
                   border: `2px solid ${finalTestPassed ? '#86efac' : '#fde68a'}`,
                   background: finalTestPassed ? '#ecfdf5' : '#fffbeb',
                   color: finalTestPassed ? '#15803d' : '#92400e',
-                  fontSize: 14, fontWeight: 700, cursor: 'pointer', textAlign: 'center',
+                  fontSize: 14, fontWeight: 700, cursor: finalRetryInfo.locked ? 'not-allowed' : 'pointer', textAlign: 'center',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  opacity: finalRetryInfo.locked ? 0.6 : 1,
                 }}
               >
-                📝 {finalTestPassed ? '✅ Final Test Passed' : 'Take Final Test'}
+                📝 {finalTestPassed ? '✅ Final Test Passed' : finalRetryInfo.locked ? `Read again - retry ${formatDateTime(finalRetryInfo.retryAt)}` : 'Take Final Test'}
               </button>
+                );
+              })()
             )}
           </div>
         </div>

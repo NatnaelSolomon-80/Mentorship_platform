@@ -54,17 +54,17 @@ const HBarChart = ({ data, maxVal }) => {
 };
 
 /* ─── Enhanced Stat Card ─── */
-const EnhancedStatCard = ({ icon: Icon, label, value, target, color, bg, desc }) => {
+const EnhancedStatCard = ({ icon: Icon, label, value, target, color, bg, desc, to }) => {
   const pct = target ? Math.min(Math.round((value / target) * 100), 100) : null;
-  return (
-    <div style={{
-      background: bg, borderRadius: 18, padding: '22px 20px',
-      border: `1px solid ${color}18`, position: 'relative', overflow: 'hidden',
-      transition: 'all 0.3s',
-    }}
-      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = `0 12px 32px ${color}15`; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
-    >
+  const cardStyle = {
+    background: bg, borderRadius: 18, padding: '22px 20px',
+    border: `1px solid ${color}18`, position: 'relative', overflow: 'hidden',
+    transition: 'all 0.3s', textDecoration: 'none', display: 'block',
+    cursor: to ? 'pointer' : 'default',
+  };
+
+  const cardBody = (
+    <>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ width: 42, height: 42, borderRadius: 12, background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Icon size={20} color={color} />
@@ -90,6 +90,29 @@ const EnhancedStatCard = ({ icon: Icon, label, value, target, color, bg, desc })
         </div>
       )}
       {desc && <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>{desc}</p>}
+    </>
+  );
+
+  const hoverIn = e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = `0 12px 32px ${color}15`; };
+  const hoverOut = e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; };
+
+  if (to) {
+    return (
+      <Link to={to} style={cardStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
+        {cardBody}
+      </Link>
+    );
+  }
+
+  return (
+    <div style={{
+      ...cardStyle,
+      cursor: 'default',
+    }}
+      onMouseEnter={hoverIn}
+      onMouseLeave={hoverOut}
+    >
+      {cardBody}
     </div>
   );
 };
@@ -196,10 +219,10 @@ const MentorDashboard = () => {
         <>
           {/* ─── Enhanced Stat Cards with Progress ─── */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }} className="stats-row">
-            <EnhancedStatCard icon={BookOpen} label="My Courses" value={stats.courses} target={5} color="#2d6a4f" bg="#f0faf3" />
-            <EnhancedStatCard icon={Users} label="Active Students" value={stats.students} target={20} color="#1565c0" bg="#eff6ff" />
-            <EnhancedStatCard icon={Clock} label="Pending Requests" value={stats.pendingRequests} color="#e65100" bg="#fff8f0" desc={stats.pendingRequests > 0 ? '⚡ Needs your attention' : '✅ All caught up'} />
-            <EnhancedStatCard icon={Award} label="Cert Approvals" value={stats.pendingCerts} color="#6a1b9a" bg="#faf5ff" desc={stats.pendingCerts > 0 ? '📋 Review pending certs' : '🎉 No pending certs'} />
+            <EnhancedStatCard to="/mentor/courses" icon={BookOpen} label="My Courses" value={stats.courses} target={5} color="#2d6a4f" bg="#f0faf3" />
+            <EnhancedStatCard to="/mentor/students" icon={Users} label="Active Students" value={stats.students} target={20} color="#1565c0" bg="#eff6ff" />
+            <EnhancedStatCard to="/mentor/students" icon={Clock} label="Pending Requests" value={stats.pendingRequests} color="#e65100" bg="#fff8f0" desc={stats.pendingRequests > 0 ? '⚡ Needs your attention' : '✅ All caught up'} />
+            <EnhancedStatCard to="/mentor/certificates" icon={Award} label="Cert Approvals" value={stats.pendingCerts} color="#6a1b9a" bg="#faf5ff" desc={stats.pendingCerts > 0 ? '📋 Review pending certs' : '🎉 No pending certs'} />
           </div>
 
           {/* ─── Charts Section ─── */}

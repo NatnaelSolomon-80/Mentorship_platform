@@ -22,8 +22,21 @@ const getStudentDetail = async (studentId, courseId) => {
   // Gather quiz results
   const tests   = await Test.find({ courseId });
   const results = await Result.find({ studentId, testId: { $in: tests.map(t => t._id) } });
+  const latestByTest = {};
+  results.forEach((result) => {
+    const key = result.testId?.toString();
+    if (!key) return;
+    if (!latestByTest[key]) {
+      latestByTest[key] = result;
+      return;
+    }
+    if (new Date(result.createdAt).getTime() > new Date(latestByTest[key].createdAt).getTime()) {
+      latestByTest[key] = result;
+    }
+  });
+
   const quizSummary = tests.map(t => {
-    const r = results.find(r => r.testId.toString() === t._id.toString());
+    const r = latestByTest[t._id.toString()];
     return {
       testTitle: t.title,
       type: t.type,

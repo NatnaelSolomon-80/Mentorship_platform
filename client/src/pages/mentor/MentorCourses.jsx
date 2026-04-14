@@ -2,16 +2,14 @@ import { useEffect, useState } from 'react';
 import DashboardLayout from '../../components/DashboardLayout';
 import PageHeader from '../../components/PageHeader';
 import Modal from '../../components/Modal';
-import { apiGetCourses, apiCreateCourse, apiUpdateCourse, apiDeleteCourse, apiGetModules, apiCreateModule, apiDeleteModule, apiGetLessons, apiCreateLesson, apiDeleteLesson, apiCreateTest, apiGetTests, apiUploadFile } from '../../api';
+import { apiGetCourses, apiCreateCourse, apiDeleteCourse, apiGetModules, apiCreateModule, apiDeleteModule, apiGetLessons, apiCreateLesson, apiCreateTest, apiGetTests, apiUploadFile } from '../../api';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../context/AuthContext';
 import { Plus, Edit, Trash2, ChevronDown, ChevronRight, BookOpen, Play, FileText, Clock, Layers, Link as LinkIcon, HelpCircle, CheckCircle, Upload } from 'lucide-react';
 
 const typeIcon = { video: Play, note: FileText, pdf: FileText, link: LinkIcon };
 const typeColor = { video: '#3b82f6', note: '#10b981', pdf: '#f59e0b', link: '#8b5cf6' };
 
 const MentorCourses = () => {
-  const { user } = useAuth();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedCourse, setExpandedCourse] = useState(null);
@@ -31,7 +29,8 @@ const MentorCourses = () => {
   const [submitting, setSubmitting] = useState(false);
   const [uploadFile, setUploadFile] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [courseThumbnailFile, setCourseThumbnailFile] = useState(null);
+  const [courseThumbnailUploading, setCourseThumbnailUploading] = useState(false);
 
   useEffect(() => { loadCourses(); }, []);
 
@@ -52,7 +51,9 @@ const MentorCourses = () => {
     try {
       const tRes = await apiGetTests(courseId);
       setTests((prev) => ({ ...prev, [courseId]: tRes.data.data || [] }));
-    } catch {}
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const loadLessons = async (moduleId) => {
@@ -70,12 +71,28 @@ const MentorCourses = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await apiCreateCourse(courseForm);
+      let thumbnailUrl = courseForm.thumbnail.trim();
+
+      if (courseThumbnailFile) {
+        setCourseThumbnailUploading(true);
+        const uploadRes = await apiUploadFile(courseThumbnailFile);
+        thumbnailUrl = uploadRes.data.data.url;
+      }
+
+      await apiCreateCourse({
+        ...courseForm,
+        thumbnail: thumbnailUrl,
+      });
       toast.success('Course created! Pending admin approval.');
       setShowCourseModal(false);
       setCourseForm({ title: '', description: '', category: 'General', level: 'Beginner', thumbnail: '', durationWeeks: 4 });
+      setCourseThumbnailFile(null);
+      setCourseThumbnailUploading(false);
       await loadCourses();
-    } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed');
+      setCourseThumbnailUploading(false);
+    }
     finally { setSubmitting(false); }
   };
 
@@ -130,7 +147,6 @@ const MentorCourses = () => {
       setShowLessonModal(null);
       setLessonForm({ title: '', type: 'video', contentUrl: '', order: 0, duration: '' });
       setUploadFile(null);
-      setUploadProgress(0);
     } catch (err) { toast.error(err.response?.data?.message || 'Failed'); setUploading(false); }
     finally { setSubmitting(false); }
   };
@@ -347,14 +363,66 @@ const MentorCourses = () => {
                   value={courseForm.durationWeeks} onChange={(e) => setCourseForm({ ...courseForm, durationWeeks: parseInt(e.target.value) || 4 })} />
               </div>
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Thumbnail URL (optional)</label>
-              <input style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1px solid #e5e7eb', fontSize: 14, outline: 'none', fontFamily: "'Inter', sans-serif" }}
-                placeholder="https://..." value={courseForm.thumbnail} onChange={(e) => setCourseForm({ ...courseForm, thumbnail: e.target.value })} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
+              <div style={{ padding: 14, borderRadius: 14, border: '1px dashed #d1d5db', background: '#fafbfc' }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Thumbnail Image (optional)</label>
+                <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '18px 16px', borderRadius: 12, cursor: 'pointer', border: `2px dashed ${courseThumbnailFile ? '#2d6a4f' : '#d1d5db'}`, background: courseThumbnailFile ? '#f0faf3' : '#fff', transition: 'all 0.2s' }}>
+                  <Upload size={20} color={courseThumbnailFile ? '#2d6a4f' : '#9ca3af'} />
+                  <p style={{ fontSize: 13, color: courseThumbnailFile ? '#2d6a4f' : '#6b7280', margin: 0, fontWeight: 600, textAlign: 'center' }}>
+                    {courseThumbnailFile ? courseThumbnailFile.name : 'Upload a course cover image'}
+                  </p>
+                  <p style={{ fontSize: 11, color: '#9ca3af', margin: 0 }}>PNG, JPG, WEBP or GIF</p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      if (e.target.files[0]) {
+                        setCourseThumbnailFile(e.target.files[0]);
+                        setCourseForm({ ...courseForm, thumbnail: '' });
+                      }
+                    }}
+                  />
+                </label>
+                {courseThumbnailFile && (
+                  <button type="button" onClick={() => setCourseThumbnailFile(null)} style={{ marginTop: 8, fontSize: 12, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                    Remove image
+                  </button>
+                )}
+              </div>
+
+              {!courseThumbnailFile && (
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Thumbnail URL (optional)</label>
+                  <input style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1px solid #e5e7eb', fontSize: 14, outline: 'none', fontFamily: "'Inter', sans-serif" }}
+                    placeholder="https://..." value={courseForm.thumbnail} onChange={(e) => setCourseForm({ ...courseForm, thumbnail: e.target.value })} />
+                </div>
+              )}
+
+              {(courseThumbnailFile || courseForm.thumbnail) && (
+                <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid #e5e7eb', background: '#fff' }}>
+                  <div style={{ height: 160, background: courseThumbnailFile ? '#f8faf9' : '#fafbfc', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                    {courseThumbnailFile ? (
+                      <img
+                        src={URL.createObjectURL(courseThumbnailFile)}
+                        alt="Thumbnail preview"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <img
+                        src={courseForm.thumbnail}
+                        alt="Thumbnail preview"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', gap: 12 }}>
               <button type="button" onClick={() => setShowCourseModal(false)} style={{ flex: 1, padding: '12px 20px', borderRadius: 12, background: '#f3f4f6', color: '#374151', fontWeight: 600, border: 'none', cursor: 'pointer', fontSize: 14 }}>Cancel</button>
-              <button type="submit" disabled={submitting} style={{ flex: 1, padding: '12px 20px', borderRadius: 12, background: 'linear-gradient(135deg, #2d6a4f, #1a4731)', color: '#fff', fontWeight: 700, border: 'none', cursor: 'pointer', fontSize: 14 }}>{submitting ? 'Creating...' : 'Create Course'}</button>
+              <button type="submit" disabled={submitting || courseThumbnailUploading} style={{ flex: 1, padding: '12px 20px', borderRadius: 12, background: 'linear-gradient(135deg, #2d6a4f, #1a4731)', color: '#fff', fontWeight: 700, border: 'none', cursor: 'pointer', fontSize: 14 }}>{courseThumbnailUploading ? 'Uploading thumbnail...' : submitting ? 'Creating...' : 'Create Course'}</button>
             </div>
           </form>
         </Modal>

@@ -54,9 +54,9 @@ const EmployerDashboard = () => {
       ) : (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }} className="stats-row">
-            <StatCard icon={Users} label="Certified Students" value={certifiedCount} color="#2d6a4f" bg="#e8f5e9" />
-            <StatCard icon={Award} label="Verified Skills" value="100%" color="#e65100" bg="#fff3e0" />
-            <StatCard icon={Briefcase} label="Available Now" value={certifiedCount} color="#6a1b9a" bg="#f3e5f5" />
+            <StatCard to="/employer/students" icon={Users} label="Certified Students" value={certifiedCount} color="#2d6a4f" bg="#e8f5e9" />
+            <StatCard to="/employer/students" icon={Award} label="Verified Skills" value="100%" color="#e65100" bg="#fff3e0" />
+            <StatCard to="/employer/students" icon={Briefcase} label="Available Now" value={certifiedCount} color="#6a1b9a" bg="#f3e5f5" />
           </div>
 
           {/* Hiring Pipeline Status */}

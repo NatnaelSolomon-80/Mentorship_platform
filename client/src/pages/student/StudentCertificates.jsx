@@ -5,6 +5,22 @@ import { apiGetMyCertificates, apiGetCertRequests, apiGetEnrolledCourses, apiReq
 import { Award, ExternalLink, Clock, CheckCircle, XCircle, Plus, BookOpen, X, PlayCircle, Star, Users, Briefcase } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+const normalizeEnrolledCourses = (items) => {
+  const list = Array.isArray(items) ? items : [];
+  return list
+    .map((item) => {
+      if (!item) return null;
+      if (item.courseId && typeof item.courseId === 'object') {
+        return {
+          ...item.courseId,
+          enrolledAt: item.createdAt || item.courseId.createdAt,
+        };
+      }
+      return item;
+    })
+    .filter((course) => course && course._id);
+};
+
 const StudentCertificates = () => {
   const [certs, setCerts] = useState([]);
   const [requests, setRequests] = useState([]);
@@ -29,7 +45,7 @@ const StudentCertificates = () => {
       ]);
       setCerts(cRes.data.data || []);
       setRequests(rRes.data.data || []);
-      setCourses(courseRes.data.data || []);
+      setCourses(normalizeEnrolledCourses(courseRes.data.data || []));
     } catch (err) {
       console.error(err);
       toast.error("Failed to load certificates data");

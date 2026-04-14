@@ -224,8 +224,32 @@ td { padding: 14px 16px; font-size: 14px; color: var(--text-mid); }
 }
 
 /* Modal */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 20px; }
-.modal { background: var(--bg-white); border: 1px solid var(--border); border-radius: 20px; padding: 32px; width: 100%; max-width: 520px; position: relative; box-shadow: 0 24px 48px rgba(0,0,0,0.12); }
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(4px);
+  z-index: 50;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.modal {
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 32px;
+  width: 100%;
+  max-width: 520px;
+  position: relative;
+  box-shadow: 0 24px 48px rgba(0,0,0,0.12);
+  margin: auto 0;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
 
 /* Loading */
 .spinner { width: 32px; height: 32px; border: 3px solid rgba(45,106,79,0.15); border-top-color: #2d6a4f; border-radius: 50%; animation: spin 0.8s linear infinite; }

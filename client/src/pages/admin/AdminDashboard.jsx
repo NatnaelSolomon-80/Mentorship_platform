@@ -72,12 +72,12 @@ const AdminDashboard = () => {
 
       {/* Stats Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }} className="stats-row">
-        <StatCard icon={Users} label="Total Users" value={stats.users} color="#1565c0" bg="#e3f2fd" />
-        <StatCard icon={Shield} label="Mentors" value={stats.mentors} color="#2d6a4f" bg="#e8f5e9" />
-        <StatCard icon={BookOpen} label="Total Courses" value={stats.courses} color="#6a1b9a" bg="#f3e5f5" />
-        <StatCard icon={Clock} label="Pending Courses" value={stats.pendingCourses} color="#e65100" bg="#fff3e0" />
-        <StatCard icon={FileText} label="Total Reports" value={stats.reports} color="#dc2626" bg="#fee2e2" />
-        <StatCard icon={TrendingUp} label="Open Reports" value={stats.pendingReports} color="#d97706" bg="#fef3c7" />
+        <StatCard to="/admin/users" icon={Users} label="Total Users" value={stats.users} color="#1565c0" bg="#e3f2fd" />
+        <StatCard to="/admin/users" icon={Shield} label="Mentors" value={stats.mentors} color="#2d6a4f" bg="#e8f5e9" />
+        <StatCard to="/admin/courses" icon={BookOpen} label="Total Courses" value={stats.courses} color="#6a1b9a" bg="#f3e5f5" />
+        <StatCard to="/admin/courses" icon={Clock} label="Pending Courses" value={stats.pendingCourses} color="#e65100" bg="#fff3e0" />
+        <StatCard to="/admin/reports" icon={FileText} label="Total Reports" value={stats.reports} color="#dc2626" bg="#fee2e2" />
+        <StatCard to="/admin/reports" icon={TrendingUp} label="Open Reports" value={stats.pendingReports} color="#d97706" bg="#fef3c7" />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }} className="dash-main-grid">

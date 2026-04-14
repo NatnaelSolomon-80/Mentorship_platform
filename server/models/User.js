@@ -15,6 +15,11 @@ const userSchema = new mongoose.Schema({
   avatar: { type: String, default: '' },
   bio: { type: String, default: '' },
   skills: [{ type: String }],
+  experienceLevel: {
+    type: String,
+    enum: ['Beginner', 'Intermediate', 'Advanced'],
+    default: 'Beginner',
+  },
   yearsOfExperience: { type: Number, default: 0 },
   githubUrl: { type: String, default: '' },
   portfolioUrl: { type: String, default: '' },

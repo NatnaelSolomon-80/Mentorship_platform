@@ -146,10 +146,16 @@ const getEnrolledCourses = async (req, res) => {
     const enrollments = await Enrollment.find({ studentId: req.user._id })
       .populate({
         path: 'courseId',
-        populate: { path: 'mentorId', select: 'name email avatar skills yearsOfExperience rating reviewCount' },
-      });
-    const courses = enrollments.map((e) => e.courseId);
-    res.json({ success: true, data: courses });
+        populate: [
+          { path: 'mentorId', select: 'name email avatar skills yearsOfExperience rating reviewCount' },
+          { path: 'modules', select: '_id' },
+        ],
+      })
+      .sort({ createdAt: -1 });
+
+    const validEnrollments = enrollments.filter((enrollment) => enrollment.courseId);
+
+    res.json({ success: true, data: validEnrollments });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

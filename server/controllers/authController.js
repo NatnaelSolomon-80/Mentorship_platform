@@ -99,10 +99,39 @@ const getMe = async (req, res) => {
 // @route   PUT /api/auth/profile
 const updateProfile = async (req, res) => {
   try {
-    const { name, bio, skills, avatar } = req.body;
+    const {
+      name,
+      bio,
+      skills,
+      avatar,
+      githubUrl,
+      portfolioUrl,
+      yearsOfExperience,
+      experienceLevel,
+    } = req.body;
+
+    const updates = {};
+
+    if (typeof name === 'string') updates.name = name.trim();
+    if (typeof bio === 'string') updates.bio = bio;
+    if (Array.isArray(skills)) {
+      updates.skills = skills
+        .map((skill) => (typeof skill === 'string' ? skill.trim() : ''))
+        .filter(Boolean);
+    }
+    if (typeof avatar === 'string') updates.avatar = avatar;
+    if (typeof githubUrl === 'string') updates.githubUrl = githubUrl.trim();
+    if (typeof portfolioUrl === 'string') updates.portfolioUrl = portfolioUrl.trim();
+    if (typeof yearsOfExperience === 'number' && yearsOfExperience >= 0) {
+      updates.yearsOfExperience = yearsOfExperience;
+    }
+    if (['Beginner', 'Intermediate', 'Advanced'].includes(experienceLevel)) {
+      updates.experienceLevel = experienceLevel;
+    }
+
     const user = await User.findByIdAndUpdate(
       req.user._id,
-      { name, bio, skills, avatar },
+      updates,
       { new: true, runValidators: true }
     ).select('-password');
 

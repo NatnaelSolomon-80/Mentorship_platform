@@ -2,10 +2,9 @@ import { useEffect, useState } from 'react';
 import DashboardLayout from '../../components/DashboardLayout';
 import PageHeader from '../../components/PageHeader';
 import EmptyState from '../../components/EmptyState';
-import Modal from '../../components/Modal';
 import { apiGetCourses, apiGetMentors, apiRequestEnrollment, apiGetEnrollmentRequests } from '../../api';
 import toast from 'react-hot-toast';
-import { BookOpen, Search, Users, Clock, Star, Filter, ChevronRight, Layers, Award, X, Send, GraduationCap } from 'lucide-react';
+import { BookOpen, Search, Users, Clock, Star, Filter, ChevronRight, Layers, Award, X, Send, GraduationCap, Code2, Cpu, Database, Palette, Briefcase, Sparkles } from 'lucide-react';
 
 const levelColor = { Beginner: '#10b981', Intermediate: '#f59e0b', Advanced: '#ef4444' };
 const levelBg = { Beginner: '#ecfdf5', Intermediate: '#fffbeb', Advanced: '#fef2f2' };
@@ -17,6 +16,22 @@ const StarRating = ({ rating, size = 14 }) => (
     ))}
   </div>
 );
+
+const skillThemes = [
+  { bg: '#eff6ff', border: '#bfdbfe', color: '#1d4ed8', iconBg: '#dbeafe', icon: Code2 },
+  { bg: '#ecfdf5', border: '#a7f3d0', color: '#047857', iconBg: '#d1fae5', icon: Cpu },
+  { bg: '#fef3c7', border: '#fde68a', color: '#b45309', iconBg: '#fef9c3', icon: Database },
+  { bg: '#f5f3ff', border: '#ddd6fe', color: '#6d28d9', iconBg: '#ede9fe', icon: Palette },
+  { bg: '#fff1f2', border: '#fecdd3', color: '#be123c', iconBg: '#ffe4e6', icon: Briefcase },
+];
+
+const getSkillTheme = (skill, isMatch) => {
+  if (isMatch) {
+    return { bg: 'linear-gradient(90deg,#ecfdf5,#d1fae5)', border: '#6ee7b7', color: '#065f46', iconBg: '#a7f3d0', icon: Sparkles };
+  }
+  const idx = skill.length % skillThemes.length;
+  return skillThemes[idx];
+};
 
 const BrowseCourses = () => {
   const [courses, setCourses] = useState([]);
@@ -35,6 +50,7 @@ const BrowseCourses = () => {
   const [mentorSearch, setMentorSearch] = useState('');
   const [skillFilter, setSkillFilter] = useState('');
   const [selectedMentor, setSelectedMentor] = useState(null);
+  const [reviewModalMentor, setReviewModalMentor] = useState(null);
   const [requestMsg, setRequestMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -164,6 +180,7 @@ const BrowseCourses = () => {
               const isSelected = selectedMentor?._id === mentor._id;
               const relevance = getMentorRelevance(mentor);
               const isRecommended = relevance > 0;
+              const hasReviews = (mentor.recentReviews || []).length > 0;
 
               return (
                 <div key={mentor._id}
@@ -263,18 +280,27 @@ const BrowseCourses = () => {
 
                   {/* Skills */}
                   {(mentor.skills || []).length > 0 ? (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                       {mentor.skills.slice(0, 6).map((skill, i) => {
                         const courseWords = selectedCourse.title.toLowerCase().split(/\s+/);
                         const isMatch = courseWords.some(kw => skill.toLowerCase().includes(kw));
+                        const theme = getSkillTheme(skill, isMatch);
+                        const SkillIcon = theme.icon;
                         return (
                           <span key={i} style={{
-                            padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
-                            background: isMatch ? 'linear-gradient(90deg,#ecfdf5,#d1fae5)' : '#f8fafc',
-                            color: isMatch ? '#065f46' : '#4b5563',
-                            border: `1px solid ${isMatch ? '#6ee7b7' : '#e5e7eb'}`,
+                            padding: '4px 10px 4px 6px', borderRadius: 999, fontSize: 11, fontWeight: 700,
+                            background: theme.bg,
+                            color: theme.color,
+                            border: `1px solid ${theme.border}`,
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
                           }}>
-                            {isMatch && '✓ '}{skill}
+                            <span style={{
+                              width: 16, height: 16, borderRadius: '50%', background: theme.iconBg,
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                              <SkillIcon size={10} color={theme.color} />
+                            </span>
+                            <span>{skill}</span>
                           </span>
                         );
                       })}
@@ -289,38 +315,116 @@ const BrowseCourses = () => {
                   )}
 
                   {/* Recent Reviews */}
-                  {(mentor.recentReviews || []).length > 0 && (
+                  {hasReviews && (
                     <div style={{ marginTop: 14 }}>
                       <div style={{ height: 1, background: '#f3f4f6', marginBottom: 10 }} />
-                      <p style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Student Reviews</p>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {mentor.recentReviews.map((rev, i) => (
-                          <div key={i} style={{ background: '#f9fafb', borderRadius: 10, padding: '8px 12px', border: '1px solid #f3f4f6' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                              <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'linear-gradient(135deg,#2d6a4f,#40916c)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
-                                {rev.studentName?.[0]?.toUpperCase()}
-                              </div>
-                              <span style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>{rev.studentName}</span>
-                              <div style={{ display: 'flex', gap: 1, marginLeft: 'auto' }}>
-                                {[1,2,3,4,5].map(s => (
-                                  <Star key={s} size={10} fill={s <= rev.rating ? '#f59e0b' : 'none'} color={s <= rev.rating ? '#f59e0b' : '#d1d5db'} />
-                                ))}
-                              </div>
-                            </div>
-                            {rev.comment && (
-                              <p style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.5, margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                                "{rev.comment}"
-                              </p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReviewModalMentor(mentor);
+                        }}
+                        style={{
+                          width: '100%',
+                          border: '1px solid #e5e7eb',
+                          background: '#fff',
+                          color: '#374151',
+                          borderRadius: 10,
+                          padding: '8px 10px',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                        }}
+                      >
+                        <span>See Student Reviews</span>
+                        <span style={{ fontSize: 11, color: '#6b7280' }}>{mentor.reviewCount || mentor.recentReviews.length} total</span>
+                      </button>
                     </div>
                   )}
                 </div>
               );
             })}
           </div>
+
+          {reviewModalMentor && (
+            <div
+              onClick={() => setReviewModalMentor(null)}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(15,23,42,0.45)',
+                backdropFilter: 'blur(4px)',
+                zIndex: 80,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 20,
+              }}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  width: '100%',
+                  maxWidth: 620,
+                  maxHeight: '80vh',
+                  overflowY: 'auto',
+                  background: '#fff',
+                  borderRadius: 20,
+                  border: '1px solid #e5e7eb',
+                  boxShadow: '0 24px 56px rgba(0,0,0,0.22)',
+                  padding: 22,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#1a2e24' }}>
+                      Student Reviews
+                    </h3>
+                    <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6b7280' }}>
+                      {reviewModalMentor.name} · {reviewModalMentor.reviewCount || reviewModalMentor.recentReviews?.length || 0} total
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setReviewModalMentor(null)}
+                    style={{ border: 'none', background: '#f3f4f6', borderRadius: 10, width: 34, height: 34, cursor: 'pointer', color: '#6b7280' }}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {(reviewModalMentor.recentReviews || []).map((rev, i) => (
+                    <div key={i} style={{ background: '#f9fafb', borderRadius: 12, padding: '10px 12px', border: '1px solid #f1f5f9' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'linear-gradient(135deg,#2d6a4f,#40916c)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+                          {rev.studentName?.[0]?.toUpperCase()}
+                        </div>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#1f2937' }}>{rev.studentName}</span>
+                        <div style={{ display: 'flex', gap: 1, marginLeft: 'auto' }}>
+                          {[1,2,3,4,5].map(s => (
+                            <Star key={s} size={11} fill={s <= rev.rating ? '#f59e0b' : 'none'} color={s <= rev.rating ? '#f59e0b' : '#d1d5db'} />
+                          ))}
+                        </div>
+                      </div>
+                      {rev.comment ? (
+                        <p style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.55, margin: 0 }}>
+                          "{rev.comment}"
+                        </p>
+                      ) : (
+                        <p style={{ fontSize: 12, color: '#9ca3af', margin: 0, fontStyle: 'italic' }}>
+                          No comment provided.
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ── Sticky Bottom Action Bar ── */}
           {selectedMentor && (

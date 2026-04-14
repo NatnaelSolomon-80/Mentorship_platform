@@ -8,6 +8,22 @@ const levelColor = { Beginner: '#2d6a4f', Intermediate: '#1565c0', Advanced: '#e
 const levelBg = { Beginner: '#f0faf3', Intermediate: '#eff6ff', Advanced: '#fff8f0' };
 const catColors = ['#2d6a4f', '#1565c0', '#e65100', '#6a1b9a', '#00695c', '#ad1457'];
 
+const normalizeEnrolledCourses = (items) => {
+  const list = Array.isArray(items) ? items : [];
+  return list
+    .map((item) => {
+      if (!item) return null;
+      if (item.courseId && typeof item.courseId === 'object') {
+        return {
+          ...item.courseId,
+          enrolledAt: item.createdAt || item.courseId.createdAt,
+        };
+      }
+      return item;
+    })
+    .filter((course) => course && course._id);
+};
+
 const MyCourses = () => {
   const [courses, setCourses] = useState([]);
   const [progressMap, setProgressMap] = useState({}); // courseId -> { pct, completedModules, totalModules }
@@ -18,7 +34,7 @@ const MyCourses = () => {
     const load = async () => {
       try {
         const res = await apiGetEnrolledCourses();
-        const enrolled = res.data.data || [];
+        const enrolled = normalizeEnrolledCourses(res.data.data || []);
         setCourses(enrolled);
 
         // Fetch real progress for each course in parallel
