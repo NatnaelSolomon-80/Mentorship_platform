@@ -13,6 +13,8 @@ API.interceptors.request.use((config) => {
 export const apiRegister = (data) => API.post('/auth/register', data);
 export const apiLogin = (data) => API.post('/auth/login', data);
 export const apiLoginWithGoogle = (data) => API.post('/auth/google', data);
+export const apiForgotPassword = (data) => API.post('/auth/forgot-password', data);
+export const apiResetPassword = (data) => API.post('/auth/reset-password', data);
 export const apiGetMe = () => API.get('/auth/me');
 export const apiUpdateProfile = (data) => API.put('/auth/profile', data);
 

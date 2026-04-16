@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
@@ -25,6 +26,10 @@ const userSchema = new mongoose.Schema({
   portfolioUrl: { type: String, default: '' },
   rating: { type: Number, default: 0 },
   reviewCount: { type: Number, default: 0 },
+  passwordResetTokenHash: { type: String, default: null },
+  passwordResetExpiresAt: { type: Date, default: null },
+  passwordResetUsedAt: { type: Date, default: null },
+  passwordChangedAt: { type: Date, default: null },
   // Onboarding flow for mentor & employer
   submissionStatus: {
     type: String,
@@ -41,6 +46,11 @@ userSchema.pre('save', async function (next) {
   if (this.role === 'admin') this.isApproved = true;
 
   if (!this.isModified('password')) return next();
+
+  if (!this.isNew) {
+    this.passwordChangedAt = new Date();
+  }
+
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
   next();
@@ -48,6 +58,14 @@ userSchema.pre('save', async function (next) {
 
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
+};
+
+userSchema.methods.createPasswordResetToken = function () {
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  this.passwordResetTokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  this.passwordResetExpiresAt = new Date(Date.now() + 30 * 60 * 1000);
+  this.passwordResetUsedAt = null;
+  return rawToken;
 };
 
 module.exports = mongoose.model('User', userSchema);

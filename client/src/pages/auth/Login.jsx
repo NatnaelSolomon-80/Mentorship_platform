@@ -13,7 +13,26 @@ const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const googleBtnRef = useRef(null);
+  const emailInputRef = useRef(null);
+  const passwordInputRef = useRef(null);
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  useEffect(() => {
+    const clearLoginInputs = () => {
+      setForm({ email: '', password: '' });
+      if (emailInputRef.current) emailInputRef.current.value = '';
+      if (passwordInputRef.current) passwordInputRef.current.value = '';
+    };
+
+    clearLoginInputs();
+    const timer = setTimeout(clearLoginInputs, 50);
+    window.addEventListener('pageshow', clearLoginInputs);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('pageshow', clearLoginInputs);
+    };
+  }, []);
 
   const completeLogin = (payload) => {
     login(payload.data, payload.token);
@@ -170,16 +189,19 @@ const Login = () => {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <form onSubmit={handleSubmit} autoComplete="off" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {/* Email */}
             <div>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Email Address</label>
               <input
+                ref={emailInputRef}
                 type="email"
+                name="sb_email_input"
                 className="input-field"
                 placeholder="you@example.com"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
+                autoComplete="off"
                 required
               />
             </div>
@@ -188,15 +210,18 @@ const Login = () => {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <label style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Password</label>
-                <a href="#" style={{ fontSize: 12, color: '#2d6a4f', textDecoration: 'none', fontWeight: 500 }}>Forgot password?</a>
+                <Link to="/forgot-password" style={{ fontSize: 12, color: '#2d6a4f', textDecoration: 'none', fontWeight: 500 }}>Forgot password?</Link>
               </div>
               <div style={{ position: 'relative' }}>
                 <input
+                  ref={passwordInputRef}
                   type={showPass ? 'text' : 'password'}
+                  name="sb_password_input"
                   className="input-field"
                   placeholder="••••••••"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  autoComplete="new-password"
                   style={{ paddingRight: 44 }}
                   required
                 />

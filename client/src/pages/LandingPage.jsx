@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   BookOpen, Users, Award, Shield, MessageCircle, BarChart3,
@@ -626,16 +626,28 @@ const Footer = () => (
           </p>
         </div>
         {[{ title: 'About', items: ['Features', 'How It Works', 'Roles', 'Certificates'] },
-        { title: 'Resources', items: ['Courses', 'Mentors', 'Help Desk', 'FAQ'] },
+        { title: 'Resources', items: ['Courses', 'Mentors', 'Help Desk', 'FAQ', 'Contact Us'] },
         { title: 'Social', items: ['Telegram', 'LinkedIn', 'Twitter', 'Instagram'] }
         ].map(col => (
           <div key={col.title}>
             <h4 style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.7)', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '1.5px' }}>{col.title}</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {col.items.map(item => (
-                <a key={item} href="#" style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', textDecoration: 'none', transition: 'color 0.2s' }}
-                  onMouseEnter={e => e.target.style.color = '#52b788'}
-                  onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.4)'}>{item}</a>
+                ['Help Desk', 'FAQ', 'Contact Us'].includes(item) ? (
+                  <Link
+                    key={item}
+                    to={item === 'Help Desk' ? '/help-desk' : item === 'FAQ' ? '/faq' : '/contact-us'}
+                    style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', textDecoration: 'none', transition: 'color 0.2s' }}
+                    onMouseEnter={e => e.target.style.color = '#52b788'}
+                    onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.4)'}
+                  >
+                    {item}
+                  </Link>
+                ) : (
+                  <a key={item} href="#" style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', textDecoration: 'none', transition: 'color 0.2s' }}
+                    onMouseEnter={e => e.target.style.color = '#52b788'}
+                    onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.4)'}>{item}</a>
+                )
               ))}
             </div>
           </div>
@@ -650,7 +662,7 @@ const Footer = () => (
         </div>
       </div>
       <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>© 2026 SkillBridge Ethiopia. Final Year Project — Built with ❤️</p>
+        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>© 2026 SkillBridge Ethiopia.</p>
         <div style={{ display: 'flex', gap: 16 }}>
           {['Privacy Policy', 'Terms of Service'].map(item => (
             <a key={item} href="#" style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', textDecoration: 'none', transition: 'color 0.2s' }}

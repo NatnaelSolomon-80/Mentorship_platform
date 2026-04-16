@@ -5,10 +5,15 @@ import ProtectedRoute from './routes/ProtectedRoute';
 
 // Landing
 import LandingPage from './pages/LandingPage';
+import FAQPage from './pages/FAQPage';
+import ContactUsPage from './pages/ContactUsPage';
+import HelpDeskPage from './pages/HelpDeskPage';
 
 // Auth
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 
 // Student
 import StudentDashboard from './pages/student/StudentDashboard';
@@ -62,8 +67,13 @@ function App() {
         <Routes>
           {/* Public */}
           <Route path="/" element={<LandingPage />} />
+          <Route path="/faq" element={<FAQPage />} />
+          <Route path="/contact-us" element={<ContactUsPage />} />
+          <Route path="/help-desk" element={<HelpDeskPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
 
           {/* User Profile */}
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

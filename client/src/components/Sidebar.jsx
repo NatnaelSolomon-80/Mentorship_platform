@@ -74,7 +74,7 @@ const Sidebar = ({ unreadMessageCount = 0 }) => {
       display: 'flex', flexDirection: 'column',
       padding: '20px 0', flexShrink: 0,
       position: 'sticky', top: 0,
-      overflow: 'hidden',
+      zIndex: 60,
     }}>
       {/* Logo */}
       <div style={{ padding: '0 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: 8 }}>
@@ -230,9 +230,9 @@ const Sidebar = ({ unreadMessageCount = 0 }) => {
             }}>
               <LogOut size={28} color="#dc2626" />
             </div>
-            <h3 style={{ fontSize: 20, fontWeight: 800, color: '#1e293b', margin: '0 0 8px' }}>Leaving so soon?</h3>
+            <h3 style={{ fontSize: 20, fontWeight: 800, color: '#1e293b', margin: '0 0 8px' }}>Are you sure you want to log out?</h3>
             <p style={{ fontSize: 14, color: '#64748b', margin: '0 0 28px', lineHeight: 1.6 }}>
-              Are you sure you want to log out of <strong>SkillBridge</strong>? You'll need to sign in again to access your account.
+              You will need to sign in again to access your account.
             </p>
             <div style={{ display: 'flex', gap: 12 }}>
               <button
@@ -245,7 +245,7 @@ const Sidebar = ({ unreadMessageCount = 0 }) => {
                 onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'}
                 onMouseLeave={e => e.currentTarget.style.background = '#f8fafc'}
               >
-                Stay
+                Cancel
               </button>
               <button
                 onClick={handleLogout}

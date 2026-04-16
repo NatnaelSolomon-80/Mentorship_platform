@@ -2,6 +2,7 @@ const User = require('../models/User');
 const generateToken = require('../utils/generateToken');
 const { OAuth2Client } = require('google-auth-library');
 const crypto = require('crypto');
+const sendEmail = require('../utils/sendEmail');
 
 const buildAuthPayload = (user) => ({
   _id: user._id,
@@ -201,4 +202,100 @@ const updateProfile = async (req, res) => {
   }
 };
 
-module.exports = { register, login, googleLogin, getMe, updateProfile };
+// @desc    Request password reset
+// @route   POST /api/auth/forgot-password
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required' });
+    }
+
+    const genericMessage = 'If an account with this email exists, a reset link has been sent.';
+    const user = await User.findOne({ email: String(email).toLowerCase().trim() });
+
+    if (!user) {
+      return res.json({ success: true, message: genericMessage });
+    }
+
+    const rawToken = user.createPasswordResetToken();
+    await user.save({ validateBeforeSave: false });
+
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const resetUrl = `${clientUrl}/reset-password/${rawToken}`;
+
+    const text = `You requested a password reset for SkillBridge. Use this link within 30 minutes: ${resetUrl}`;
+    const html = `
+      <p>You requested a password reset for SkillBridge.</p>
+      <p>Click the link below to set a new password. This link expires in 30 minutes.</p>
+      <p><a href="${resetUrl}">${resetUrl}</a></p>
+      <p>If you did not request this, you can safely ignore this email.</p>
+    `;
+
+    await sendEmail({
+      to: user.email,
+      subject: 'SkillBridge Password Reset',
+      text,
+      html,
+    });
+
+    res.json({ success: true, message: genericMessage });
+  } catch (error) {
+    // If mail send fails, invalidate any generated reset token for safety.
+    if (req.body?.email) {
+      const existingUser = await User.findOne({ email: String(req.body.email).toLowerCase().trim() });
+      if (existingUser) {
+        existingUser.passwordResetTokenHash = null;
+        existingUser.passwordResetExpiresAt = null;
+        existingUser.passwordResetUsedAt = null;
+        await existingUser.save({ validateBeforeSave: false });
+      }
+    }
+
+    res.status(503).json({
+      success: false,
+      message: 'Password reset email service is currently unavailable. Please try again later.',
+    });
+  }
+};
+
+// @desc    Reset password
+// @route   POST /api/auth/reset-password
+const resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({ success: false, message: 'Token and new password are required' });
+    }
+
+    if (String(password).length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
+    }
+
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    const user = await User.findOne({
+      passwordResetTokenHash: tokenHash,
+      passwordResetExpiresAt: { $gt: new Date() },
+      passwordResetUsedAt: null,
+    });
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Reset token is invalid or expired' });
+    }
+
+    user.password = password;
+    user.passwordResetUsedAt = new Date();
+    user.passwordResetTokenHash = null;
+    user.passwordResetExpiresAt = null;
+    await user.save();
+
+    res.json({ success: true, message: 'Password updated successfully. You can now log in.' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+module.exports = { register, login, googleLogin, getMe, updateProfile, forgotPassword, resetPassword };

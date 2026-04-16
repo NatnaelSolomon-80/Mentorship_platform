@@ -10,31 +10,41 @@ const connectDB = async () => {
 const seedAdmin = async () => {
   await connectDB();
 
-  // Directly insert admin bypassing the User model pre-save hook (which only handles student/mentor/employer)
-  const adminEmail = 'admin@skillbridge.et';
-  const existing = await mongoose.connection.collection('users').findOne({ email: adminEmail });
+  const adminEmail = 'admin@skillbridge.et'; // change this anytime
+  const adminPassword = '12121212'; // change this anytime
 
-  if (existing) {
-    console.log('Admin already exists:', adminEmail);
-  } else {
-    const hashedPassword = await bcrypt.hash('Admin@123', 10);
-    await mongoose.connection.collection('users').insertOne({
-      name: 'Platform Admin',
-      email: adminEmail,
-      password: hashedPassword,
-      role: 'admin',
-      isApproved: true,
-      isBlocked: false,
-      avatar: '',
-      bio: 'Skill Bridge Ethiopia Platform Administrator',
-      skills: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+  const hashedPassword = await bcrypt.hash(adminPassword, 10);
+
+  const result = await mongoose.connection.collection('users').updateOne(
+    { email: adminEmail }, // search by email
+    {
+      $set: {
+        name: 'Platform Admin',
+        email: adminEmail,
+        password: hashedPassword,
+        role: 'admin',
+        isApproved: true,
+        isBlocked: false,
+        avatar: '',
+        bio: 'Skill Bridge Ethiopia Platform Administrator',
+        skills: [],
+        updatedAt: new Date(),
+      },
+      $setOnInsert: {
+        createdAt: new Date(),
+      }
+    },
+    { upsert: true }
+  );
+
+  if (result.upsertedCount > 0) {
     console.log('✅ Admin created successfully!');
-    console.log('Email:', adminEmail);
-    console.log('Password: Admin@123');
+  } else {
+    console.log('🔄 Admin updated successfully!');
   }
+
+  console.log('Email:', adminEmail);
+  console.log('Password:', adminPassword);
 
   process.exit();
 };
