@@ -4,7 +4,7 @@ import DashboardLayout from '../../components/DashboardLayout';
 import Modal from '../../components/Modal';
 import { apiGetCourse, apiGetModules, apiGetProgress, apiMarkLesson, apiMarkModule, apiGetTests, apiSubmitTest, apiGetResults, apiRequestCertificate, apiGetCertRequests, apiCreateReport, apiCreateReview, apiCheckReview } from '../../api';
 import toast from 'react-hot-toast';
-import { CheckCircle, Circle, Play, FileText, BookOpen, ChevronDown, ChevronRight, Lock, Award, Flag, ExternalLink, RotateCcw, Star, Link as LinkIcon, Video } from 'lucide-react';
+import { CheckCircle, Circle, Play, FileText, BookOpen, ChevronDown, ChevronRight, Lock, Award, Flag, ExternalLink, RotateCcw, Star, Link as LinkIcon, Video, FlagTriangleRight } from 'lucide-react';
 
 const typeIcon = { video: Play, note: FileText, pdf: FileText, link: LinkIcon };
 const typeColor = { video: '#3b82f6', note: '#10b981', pdf: '#f59e0b', link: '#8b5cf6' };
@@ -39,6 +39,7 @@ const CourseLearning = () => {
   const [showCertModal, setShowCertModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportMsg, setReportMsg] = useState('');
+  const [reportCategory, setReportCategory] = useState('harassment');
   const [activeTest, setActiveTest] = useState(null);
   const [answers, setAnswers] = useState({});
   const [submittingTest, setSubmittingTest] = useState(false);
@@ -49,6 +50,7 @@ const CourseLearning = () => {
   const [ratingComment, setRatingComment] = useState('');
   const [hasReviewed, setHasReviewed] = useState(false);
   const [videoProgressOk, setVideoProgressOk] = useState(false);
+  const canReportMentor = !!course?.mentorId && !!progress;
 
   useEffect(() => {
     const load = async () => {
@@ -243,10 +245,17 @@ const CourseLearning = () => {
   const handleReport = async (e) => {
     e.preventDefault();
     try {
-      await apiCreateReport({ courseId, contentId: activeLesson?._id || course._id, contentType: activeLesson ? 'lesson' : 'course', message: reportMsg });
+      await apiCreateReport({
+        courseId,
+        contentId: activeLesson?._id || course._id,
+        contentType: activeLesson ? 'lesson' : 'course',
+        category: reportCategory,
+        message: reportMsg,
+      });
       toast.success('Report submitted. Admin will review it.');
       setShowReportModal(false);
       setReportMsg('');
+      setReportCategory('harassment');
     } catch { toast.error('Failed to submit report'); }
   };
 
@@ -294,10 +303,25 @@ const CourseLearning = () => {
                   </div>
                 )}
               </div>
-              <button onClick={() => setShowReportModal(true)} title="Report content"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: 4 }}>
-                <Flag size={18} />
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+                <button
+                  onClick={() => setShowReportModal(true)}
+                  disabled={!canReportMentor}
+                  title={canReportMentor ? 'Report mentor/content' : 'Available after enrollment is active'}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    border: '1px solid #fecaca', background: canReportMentor ? '#fff1f2' : '#f9fafb',
+                    color: canReportMentor ? '#b91c1c' : '#9ca3af', cursor: canReportMentor ? 'pointer' : 'not-allowed',
+                    padding: '10px 14px', borderRadius: 12, fontSize: 13, fontWeight: 700,
+                    boxShadow: canReportMentor ? '0 6px 16px rgba(244,63,94,0.10)' : 'none',
+                  }}
+                >
+                  <FlagTriangleRight size={16} /> Report Mentor
+                </button>
+                <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>
+                  {canReportMentor ? 'Only for active student-mentor work' : 'Available after enrollment'}
+                </span>
+              </div>
             </div>
 
             {/* Progress Bar */}
@@ -766,7 +790,23 @@ const CourseLearning = () => {
       {showReportModal && (
         <Modal title="Report Content" onClose={() => setShowReportModal(false)}>
           <form onSubmit={handleReport} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <p style={{ fontSize: 13, color: '#6b7280' }}>Report inappropriate or inaccurate content to the admin.</p>
+            <p style={{ fontSize: 13, color: '#6b7280' }}>Choose a report reason so the admin can review it correctly.</p>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Report Reason</label>
+              <select
+                value={reportCategory}
+                onChange={(e) => setReportCategory(e.target.value)}
+                className="input-field"
+              >
+                <option value="harassment">Harassment</option>
+                <option value="spam">Spam</option>
+                <option value="abuse">Abuse</option>
+                <option value="inappropriate_content">Inappropriate Content</option>
+                <option value="cheating">Cheating</option>
+                <option value="fake_information">Fake Information</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
             <textarea rows={4} placeholder="Describe the issue..." value={reportMsg} onChange={(e) => setReportMsg(e.target.value)} required
               style={{ padding: '12px 14px', borderRadius: 12, border: '1px solid #e5e7eb', fontSize: 14, resize: 'none', outline: 'none', fontFamily: "'Inter', sans-serif" }} />
             <div style={{ display: 'flex', gap: 12 }}>

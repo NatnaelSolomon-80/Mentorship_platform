@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
 
 # Editor directories and files
 .vscode/*
@@ -22,3 +24,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+GOOGLE_CLIENT_ID=959575456899-csics95gi0t4oud0ec08r7udjouhnrhs.apps.googleusercontent.com
+
+VITE_GOOGLE_CLIENT_ID=959575456899-csics95gi0t4oud0ec08r7udjouhnrhs.apps.googleusercontent.com
+

@@ -1,5 +1,18 @@
 const User = require('../models/User');
 const generateToken = require('../utils/generateToken');
+const { OAuth2Client } = require('google-auth-library');
+const crypto = require('crypto');
+
+const buildAuthPayload = (user) => ({
+  _id: user._id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+  isApproved: user.isApproved,
+  avatar: user.avatar,
+  bio: user.bio,
+  skills: user.skills,
+});
 
 // @desc    Register user
 // @route   POST /api/auth/register
@@ -57,12 +70,12 @@ const login = async (req, res) => {
     // Find user including admin
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      return res.status(401).json({ success: false, message: 'Incorrect email or password' });
     }
 
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      return res.status(401).json({ success: false, message: 'Incorrect email or password' });
     }
 
     if (user.isBlocked) {
@@ -73,19 +86,66 @@ const login = async (req, res) => {
     res.json({
       success: true,
       token: generateToken(user._id),
-      data: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        isApproved: user.isApproved,
-        avatar: user.avatar,
-        bio: user.bio,
-        skills: user.skills,
-      },
+      data: buildAuthPayload(user),
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Login/register user with Google
+// @route   POST /api/auth/google
+const googleLogin = async (req, res) => {
+  try {
+    const { credential } = req.body;
+    const googleClientId = process.env.GOOGLE_CLIENT_ID;
+
+    if (!credential) {
+      return res.status(400).json({ success: false, message: 'Google credential is required' });
+    }
+
+    if (!googleClientId) {
+      return res.status(500).json({ success: false, message: 'Google sign-in is not configured on the server' });
+    }
+
+    const client = new OAuth2Client(googleClientId);
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: googleClientId,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload?.email || !payload.email_verified) {
+      return res.status(401).json({ success: false, message: 'Google account verification failed' });
+    }
+
+    let user = await User.findOne({ email: payload.email.toLowerCase() });
+
+    if (!user) {
+      // Default role for social sign-in is student.
+      user = await User.create({
+        name: payload.name || payload.email.split('@')[0],
+        email: payload.email.toLowerCase(),
+        password: crypto.randomBytes(24).toString('hex'),
+        role: 'student',
+        avatar: payload.picture || '',
+      });
+    } else if (!user.avatar && payload.picture) {
+      user.avatar = payload.picture;
+      await user.save();
+    }
+
+    if (user.isBlocked) {
+      return res.status(403).json({ success: false, message: 'Your account has been blocked. Contact admin.' });
+    }
+
+    res.json({
+      success: true,
+      token: generateToken(user._id),
+      data: buildAuthPayload(user),
+    });
+  } catch (error) {
+    res.status(401).json({ success: false, message: 'Google sign-in failed. Please try again.' });
   }
 };
 
@@ -141,4 +201,4 @@ const updateProfile = async (req, res) => {
   }
 };
 
-module.exports = { register, login, getMe, updateProfile };
+module.exports = { register, login, googleLogin, getMe, updateProfile };

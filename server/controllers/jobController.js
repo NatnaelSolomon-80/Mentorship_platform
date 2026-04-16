@@ -316,22 +316,93 @@ const advanceApplicationStage = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid ATS stage progression' });
     }
 
-    let updateQuery = { status };
-    if (trackingPayload) {
-      updateQuery.stageTracking = trackingPayload;
+    const existingApplication = await JobApplication.findOne({ _id: req.params.id, employerId: req.user._id });
+    if (!existingApplication) {
+      return res.status(404).json({ success: false, message: 'Application not found or unauthorized' });
     }
 
-    const application = await JobApplication.findOneAndUpdate(
-      { _id: req.params.id, employerId: req.user._id },
-      updateQuery,
-      { new: true }
-    );
+    let updateQuery = { status };
+    if (trackingPayload) {
+      // Keep previously stored stage data (quiz, submissions, room info) when advancing stages.
+      updateQuery.stageTracking = {
+        ...(existingApplication.stageTracking?.toObject ? existingApplication.stageTracking.toObject() : existingApplication.stageTracking || {}),
+        ...trackingPayload,
+      };
+    }
+
+    const application = await JobApplication.findByIdAndUpdate(existingApplication._id, updateQuery, { new: true });
 
     if (!application) {
       return res.status(404).json({ success: false, message: 'Application not found or unauthorized' });
     }
 
+    if (status === 'interview_scheduled' && application.stageTracking?.interviewDate && application.stageTracking?.interviewTime) {
+      const interviewDateLabel = new Date(application.stageTracking.interviewDate).toLocaleDateString();
+      const interviewTimeLabel = application.stageTracking.interviewTime;
+
+      await Notification.create({
+        userId: application.studentId,
+        type: 'session_scheduled',
+        title: 'Interview Scheduled',
+        message: `Your interview is scheduled for ${interviewDateLabel} at ${interviewTimeLabel}.`,
+        link: '/student/jobs',
+      }).catch(() => {});
+
+      await Notification.create({
+        userId: application.employerId,
+        type: 'session_scheduled',
+        title: 'Interview Scheduled',
+        message: `Interview with candidate is scheduled for ${interviewDateLabel} at ${interviewTimeLabel}.`,
+        link: '/employer/requests',
+      }).catch(() => {});
+    }
+
     res.json({ success: true, message: `Application advanced to ${status.replace('_', ' ')}`, data: application });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc   Mark interview join timestamp for current user (student/employer)
+// @route  PATCH /api/jobs/applications/:id/interview-join
+// @access Private (Student, Employer)
+const markInterviewJoined = async (req, res) => {
+  try {
+    if (!['student', 'employer'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    const filter = { _id: req.params.id };
+    if (req.user.role === 'student') {
+      filter.studentId = req.user._id;
+    } else {
+      filter.employerId = req.user._id;
+    }
+
+    const application = await JobApplication.findOne(filter);
+    if (!application) {
+      return res.status(404).json({ success: false, message: 'Application not found or unauthorized' });
+    }
+
+    const joinField = req.user.role === 'student'
+      ? 'stageTracking.studentJoinedAt'
+      : 'stageTracking.employerJoinedAt';
+
+    const existingJoinTime = req.user.role === 'student'
+      ? application.stageTracking?.studentJoinedAt
+      : application.stageTracking?.employerJoinedAt;
+
+    if (existingJoinTime) {
+      return res.json({ success: true, data: application, message: 'Interview join already recorded' });
+    }
+
+    const updated = await JobApplication.findByIdAndUpdate(
+      application._id,
+      { $set: { [joinField]: new Date() } },
+      { new: true }
+    );
+
+    res.json({ success: true, data: updated, message: 'Interview join recorded' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -376,5 +447,6 @@ module.exports = {
   respondToOffer,
   finalizeHire,
   advanceApplicationStage,
-  getPipelineStats
+  getPipelineStats,
+  markInterviewJoined
 };

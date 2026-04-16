@@ -12,6 +12,7 @@ API.interceptors.request.use((config) => {
 // ───────── Auth ─────────
 export const apiRegister = (data) => API.post('/auth/register', data);
 export const apiLogin = (data) => API.post('/auth/login', data);
+export const apiLoginWithGoogle = (data) => API.post('/auth/google', data);
 export const apiGetMe = () => API.get('/auth/me');
 export const apiUpdateProfile = (data) => API.put('/auth/profile', data);
 
@@ -127,6 +128,7 @@ export const apiSendJobOffer = (id, data) => API.patch(`/jobs/applications/${id}
 export const apiRespondToOffer = (id, data) => API.patch(`/jobs/applications/${id}/student-response`, data);
 export const apiFinalizeHire = (id) => API.patch(`/jobs/applications/${id}/hire`);
 export const apiAdvanceApplicationStage = (id, data) => API.patch(`/jobs/applications/${id}/advance`, data);
+export const apiMarkInterviewJoined = (id) => API.patch(`/jobs/applications/${id}/interview-join`);
 // Upload
 export const apiUploadFile = (file) => {
   const formData = new FormData();

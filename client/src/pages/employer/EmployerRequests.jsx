@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import DashboardLayout from '../../components/DashboardLayout';
 import PageHeader from '../../components/PageHeader';
-import { apiGetJobApplications, apiUpdateApplicationStatus, apiSendJobOffer, apiFinalizeHire, apiAdvanceApplicationStage } from '../../api';
-import { FileText, Loader2, CheckCircle, XCircle, Clock, ExternalLink, Send, X, DollarSign, Calendar, Briefcase, Video, Code, ChevronRight, PlayCircle } from 'lucide-react';
+import { apiGetJobApplications, apiUpdateApplicationStatus, apiSendJobOffer, apiFinalizeHire, apiAdvanceApplicationStage, apiMarkInterviewJoined } from '../../api';
+import { FileText, Loader2, CheckCircle, XCircle, Clock, ExternalLink, Send, X, DollarSign, Calendar, Briefcase, Video, Code, ChevronRight, PlayCircle, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -28,10 +28,63 @@ const EmployerRequests = () => {
   });
   const [newQuestion, setNewQuestion] = useState({ questionText: '', options: ['', '', '', ''], correctAnswerIndex: 0 });
   const [interviewData, setInterviewData] = useState({ interviewDate: '', interviewTime: '' });
+  const [nowTs, setNowTs] = useState(Date.now());
 
   useEffect(() => {
     fetchApplications();
   }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const getInterviewStartDateTime = (stageTracking) => {
+    if (!stageTracking?.interviewDate || !stageTracking?.interviewTime) return null;
+    const date = new Date(stageTracking.interviewDate);
+    if (Number.isNaN(date.getTime())) return null;
+
+    const [hourString, minuteString] = String(stageTracking.interviewTime).split(':');
+    const hour = Number(hourString || 0);
+    const minute = Number(minuteString || 0);
+
+    return new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      Number.isNaN(hour) ? 0 : hour,
+      Number.isNaN(minute) ? 0 : minute,
+      0,
+      0
+    );
+  };
+
+  const isInterviewRedAlertActive = (stageTracking) => {
+    const start = getInterviewStartDateTime(stageTracking);
+    if (!start) return false;
+    if (stageTracking?.employerJoinedAt) return false;
+
+    const startMs = start.getTime();
+    const alertEndMs = startMs + 3 * 60 * 1000;
+    return nowTs >= startMs && nowTs <= alertEndMs;
+  };
+
+  const handleJoinInterview = async (app) => {
+    try {
+      const res = await apiMarkInterviewJoined(app._id);
+      const updatedStageTracking = res?.data?.data?.stageTracking;
+
+      if (updatedStageTracking) {
+        setApplications(prev => prev.map(item => (
+          item._id === app._id ? { ...item, stageTracking: updatedStageTracking } : item
+        )));
+      }
+    } catch (error) {
+      toast.error('Could not record interview join status');
+    } finally {
+      navigate(`/interview/${app.stageTracking?.interviewRoomId}`);
+    }
+  };
 
   const fetchApplications = async () => {
     try {
@@ -192,7 +245,33 @@ const EmployerRequests = () => {
                 )}
 
                 {app.status === 'test_assigned' && (
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {app.stageTracking?.testType === 'internal_quiz' && (
+                      <div style={{ background: app.stageTracking?.quizScoreSubmitted !== null && app.stageTracking?.quizScoreSubmitted !== undefined ? '#ecfdf5' : '#fff7ed', border: `1px solid ${app.stageTracking?.quizScoreSubmitted !== null && app.stageTracking?.quizScoreSubmitted !== undefined ? '#86efac' : '#fdba74'}`, borderRadius: 10, padding: '12px 14px' }}>
+                        <p style={{ fontSize: 11, fontWeight: 800, color: '#64748b', margin: '0 0 4px', textTransform: 'uppercase' }}>Internal Quiz Result</p>
+                        <p style={{ fontSize: 13, margin: 0, fontWeight: 700, color: app.stageTracking?.quizScoreSubmitted !== null && app.stageTracking?.quizScoreSubmitted !== undefined ? '#166534' : '#9a3412' }}>
+                          {app.stageTracking?.quizScoreSubmitted !== null && app.stageTracking?.quizScoreSubmitted !== undefined
+                            ? `Candidate score: ${app.stageTracking.quizScoreSubmitted}%`
+                            : 'Candidate has not submitted quiz answers yet.'}
+                        </p>
+                      </div>
+                    )}
+
+                    {app.stageTracking?.testType === 'assignment' && (
+                      <div style={{ background: app.stageTracking?.assignmentStudentSubmissionUrl ? '#ecfdf5' : '#fff7ed', border: `1px solid ${app.stageTracking?.assignmentStudentSubmissionUrl ? '#86efac' : '#fdba74'}`, borderRadius: 10, padding: '12px 14px' }}>
+                        <p style={{ fontSize: 11, fontWeight: 800, color: '#64748b', margin: '0 0 4px', textTransform: 'uppercase' }}>Assignment Submission</p>
+                        {app.stageTracking?.assignmentStudentSubmissionUrl ? (
+                          <a href={app.stageTracking.assignmentStudentSubmissionUrl} target="_blank" rel="noreferrer" style={{ color: '#166534', fontSize: 13, fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            <ExternalLink size={14} /> Open Candidate Submission
+                          </a>
+                        ) : (
+                          <p style={{ fontSize: 13, margin: 0, fontWeight: 700, color: '#9a3412' }}>
+                            Candidate has not submitted assignment yet.
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     <button onClick={() => setSelectedAppInterview(app)} style={{ flex: 1, background: '#db2777', color: '#fff', padding: '10px 16px', borderRadius: 10, fontSize: 13, fontWeight: 800, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                       <Calendar size={16} /> Schedule Video Interview <ChevronRight size={16} />
                     </button>
@@ -201,12 +280,17 @@ const EmployerRequests = () => {
 
                 {app.status === 'interview_scheduled' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {isInterviewRedAlertActive(app.stageTracking) && (
+                      <div style={{ background: '#fee2e2', border: '2px solid #ef4444', borderRadius: 10, padding: '10px 12px', color: '#991b1b', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <AlertTriangle size={16} /> LIVE NOW: Interview started. Please join within 3 minutes.
+                      </div>
+                    )}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fdf2f8', padding: '12px 16px', borderRadius: 10, border: '1px solid #fbcfe8' }}>
                       <div>
                         <p style={{ fontSize: 11, fontWeight: 800, color: '#be185d', margin: '0 0 4px', textTransform: 'uppercase' }}>Upcoming Interview</p>
                         <p style={{ fontSize: 13, fontWeight: 700, color: '#831843', margin: 0 }}>{new Date(app.stageTracking?.interviewDate).toLocaleDateString()} at {app.stageTracking?.interviewTime}</p>
                       </div>
-                      <button onClick={() => navigate(`/interview/${app.stageTracking?.interviewRoomId}`)} style={{ background: '#db2777', color: '#fff', padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 800, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button onClick={() => handleJoinInterview(app)} style={{ background: '#db2777', color: '#fff', padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 800, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                          <Video size={14} /> Join
                       </button>
                     </div>

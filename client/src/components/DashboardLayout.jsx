@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import Sidebar from './Sidebar';
-import { Bell, Search, BookOpen, Award, Package, X, CheckCheck } from 'lucide-react';
+import { Bell, Search, BookOpen, Award, Package, X, CheckCheck, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { apiGetNotifications, apiGetUnreadCount, apiMarkNotificationRead, apiMarkAllNotificationsRead, apiGetUnread } from '../api';
+import { apiGetNotifications, apiGetUnreadCount, apiMarkNotificationRead, apiMarkAllNotificationsRead, apiGetUnread, apiGetJobApplications, apiGetStudentApplications } from '../api';
 
 const typeIcon = {
   new_lesson:           '🎬',
@@ -13,13 +13,16 @@ const typeIcon = {
   certificate_approved: '🏆',
   quiz_passed:          '🎉',
   quiz_failed:          '😔',
+  report_warning:       '⚠️',
+  report_review:        '🛎️',
+  report_restricted:     '🚫',
   session_scheduled:    '📅',
   session_reminder:     '⏰',
   new_job:              '💼',
   general:              '🔔',
 };
 
-const NotificationPanel = ({ onClose }) => {
+const NotificationPanel = ({ onClose, liveInterviewAlerts = [] }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -47,7 +50,7 @@ const NotificationPanel = ({ onClose }) => {
     setItems(prev => prev.map(n => ({ ...n, read: true })));
   };
 
-  const unread = items.filter(n => !n.read).length;
+  const unread = items.filter(n => !n.read).length + liveInterviewAlerts.length;
 
   return (
     <div style={{
@@ -77,13 +80,21 @@ const NotificationPanel = ({ onClose }) => {
       <div style={{ maxHeight: 420, overflowY: 'auto' }}>
         {loading ? (
           <div style={{ padding: 32, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>Loading...</div>
-        ) : items.length === 0 ? (
+        ) : items.length === 0 && liveInterviewAlerts.length === 0 ? (
           <div style={{ padding: '32px 20px', textAlign: 'center' }}>
             <div style={{ fontSize: 36, marginBottom: 8 }}>🔔</div>
             <p style={{ fontSize: 13, color: '#9ca3af' }}>No notifications yet</p>
           </div>
         ) : (
-          items.slice(0, 10).map(notif => (
+          [...liveInterviewAlerts.map((alert, idx) => ({
+            _id: `live-${alert.applicationId}-${idx}`,
+            type: 'live_interview_alert',
+            title: 'Live Interview Alert',
+            message: alert.message,
+            read: false,
+            link: alert.link,
+            createdAt: new Date().toISOString(),
+          })), ...items].slice(0, 10).map(notif => (
             <button
               key={notif._id}
               onClick={() => handleClick(notif)}
@@ -96,7 +107,7 @@ const NotificationPanel = ({ onClose }) => {
               onMouseEnter={e => { if (notif.read) e.currentTarget.style.background = '#f9fafb'; }}
               onMouseLeave={e => { e.currentTarget.style.background = notif.read ? '#fff' : '#f0fdf4'; }}
             >
-              <span style={{ fontSize: 22, flexShrink: 0, lineHeight: 1 }}>{typeIcon[notif.type] || '🔔'}</span>
+              <span style={{ fontSize: 22, flexShrink: 0, lineHeight: 1 }}>{notif.type === 'live_interview_alert' ? '🚨' : (typeIcon[notif.type] || '🔔')}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: 13, fontWeight: notif.read ? 500 : 700, color: '#1a2e24', margin: '0 0 2px 0', lineHeight: 1.3 }}>
                   {notif.title}
@@ -127,8 +138,10 @@ const NotificationPanel = ({ onClose }) => {
 
 const DashboardLayout = ({ children }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const [liveInterviewAlerts, setLiveInterviewAlerts] = useState([]);
   const [showPanel, setShowPanel] = useState(false);
   const [showBanner, setShowBanner] = useState(true);
   const panelRef = useRef(null);
@@ -138,15 +151,82 @@ const DashboardLayout = ({ children }) => {
     apiGetUnread().then(r => setUnreadMessageCount(r.data.count || 0)).catch(() => {});
   };
 
+  const getInterviewStartDateTime = (stageTracking) => {
+    if (!stageTracking?.interviewDate || !stageTracking?.interviewTime) return null;
+    const date = new Date(stageTracking.interviewDate);
+    if (Number.isNaN(date.getTime())) return null;
+
+    const [hourString, minuteString] = String(stageTracking.interviewTime).split(':');
+    const hour = Number(hourString || 0);
+    const minute = Number(minuteString || 0);
+
+    return new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      Number.isNaN(hour) ? 0 : hour,
+      Number.isNaN(minute) ? 0 : minute,
+      0,
+      0
+    );
+  };
+
+  const fetchLiveInterviewAlerts = async () => {
+    try {
+      if (!user?.role || !['student', 'employer'].includes(user.role)) {
+        setLiveInterviewAlerts([]);
+        return;
+      }
+
+      const response = user.role === 'employer'
+        ? await apiGetJobApplications()
+        : await apiGetStudentApplications();
+
+      const applications = response?.data?.data || [];
+      const nowMs = Date.now();
+      const roleJoinField = user.role === 'employer' ? 'employerJoinedAt' : 'studentJoinedAt';
+
+      const liveAlerts = applications
+        .filter((app) => app.status === 'interview_scheduled' && app.stageTracking)
+        .map((app) => {
+          const start = getInterviewStartDateTime(app.stageTracking);
+          if (!start) return null;
+
+          const startMs = start.getTime();
+          const endMs = startMs + 3 * 60 * 1000;
+          const hasJoined = !!app.stageTracking?.[roleJoinField];
+          if (hasJoined || nowMs < startMs || nowMs > endMs) return null;
+
+          const counterpartName = user.role === 'employer'
+            ? (app.studentId?.name || 'candidate')
+            : (app.employerId?.name || 'employer');
+
+          return {
+            applicationId: app._id,
+            message: `Interview with ${counterpartName} is live now. Join within 3 minutes.`,
+            link: user.role === 'employer' ? '/employer/requests' : '/student/jobs',
+          };
+        })
+        .filter(Boolean);
+
+      setLiveInterviewAlerts(liveAlerts);
+    } catch {
+      setLiveInterviewAlerts([]);
+    }
+  };
+
   useEffect(() => {
     fetchUnread();
+    fetchLiveInterviewAlerts();
     const interval = setInterval(fetchUnread, 30000); // poll every 30s
+    const interviewAlertInterval = setInterval(fetchLiveInterviewAlerts, 15000);
     const bannerTimer = setTimeout(() => setShowBanner(false), 8000); // 8 seconds
     return () => {
       clearInterval(interval);
+      clearInterval(interviewAlertInterval);
       clearTimeout(bannerTimer);
     };
-  }, []);
+  }, [user?.role]);
 
   // Close panel when clicking outside
   useEffect(() => {
@@ -201,7 +281,7 @@ const DashboardLayout = ({ children }) => {
                 onMouseLeave={e => e.currentTarget.style.background = showPanel ? '#e8f5e9' : '#f8faf9'}
               >
                 <Bell size={17} color={showPanel ? '#2d6a4f' : '#6b7280'} />
-                {unreadCount > 0 && (
+                {(unreadCount + liveInterviewAlerts.length) > 0 && (
                   <span style={{
                     position: 'absolute', top: 4, right: 4, minWidth: 16, height: 16,
                     borderRadius: 8, background: '#ef4444', border: '2px solid #fff',
@@ -209,13 +289,14 @@ const DashboardLayout = ({ children }) => {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     padding: '0 3px', lineHeight: 1,
                   }}>
-                    {unreadCount > 99 ? '99+' : unreadCount}
+                    {(unreadCount + liveInterviewAlerts.length) > 99 ? '99+' : (unreadCount + liveInterviewAlerts.length)}
                   </span>
                 )}
               </button>
 
               {showPanel && (
                 <NotificationPanel
+                  liveInterviewAlerts={liveInterviewAlerts}
                   onClose={() => {
                     setShowPanel(false);
                     fetchUnread(); // refresh count after reading
@@ -254,6 +335,22 @@ const DashboardLayout = ({ children }) => {
             </div>
             <button onClick={() => setShowBanner(false)} className="p-1 hover:bg-emerald-600/50 rounded-lg transition-colors border border-transparent hover:border-emerald-400">
               <X size={16} />
+            </button>
+          </div>
+        )}
+
+        {liveInterviewAlerts.length > 0 && (
+          <div style={{ background: '#b91c1c', color: '#fff', padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderBottom: '1px solid #991b1b' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 800 }}>
+              <AlertTriangle size={16} />
+              {liveInterviewAlerts[0].message}
+              {liveInterviewAlerts.length > 1 ? ` (+${liveInterviewAlerts.length - 1} more)` : ''}
+            </div>
+            <button
+              onClick={() => navigate(liveInterviewAlerts[0].link)}
+              style={{ background: '#fff', color: '#b91c1c', border: 'none', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
+            >
+              Open
             </button>
           </div>
         )}

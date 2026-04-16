@@ -27,7 +27,9 @@ const jobApplicationSchema = new mongoose.Schema({
     quizScoreSubmitted: { type: Number, default: null },
     interviewDate: { type: Date },
     interviewTime: { type: String, default: '' },
-    interviewRoomId: { type: String, default: '' }
+    interviewRoomId: { type: String, default: '' },
+    studentJoinedAt: { type: Date, default: null },
+    employerJoinedAt: { type: Date, default: null }
   },
   offerDetails: {
     salary: { type: String, default: '' },

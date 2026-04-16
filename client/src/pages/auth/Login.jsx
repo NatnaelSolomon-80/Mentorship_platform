@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { apiLogin } from '../../api';
+import { apiLogin, apiLoginWithGoogle } from '../../api';
 import toast from 'react-hot-toast';
 import { Eye, EyeOff, ArrowRight, CheckCircle } from 'lucide-react';
 
@@ -9,20 +9,86 @@ const Login = () => {
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const googleBtnRef = useRef(null);
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  const completeLogin = (payload) => {
+    login(payload.data, payload.token);
+    toast.success(`Welcome back, ${payload.data.name}! 👋`);
+    const redirects = { student: '/student/dashboard', mentor: '/mentor/dashboard', admin: '/admin/dashboard', employer: '/employer/dashboard' };
+    navigate(redirects[payload.data.role] || '/');
+  };
+
+  const handleGoogleCredential = async (credential) => {
+    if (!credential) return;
+    setGoogleLoading(true);
+    try {
+      const { data } = await apiLoginWithGoogle({ credential });
+      completeLogin(data);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Google sign-in failed');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!googleClientId || !googleBtnRef.current) return;
+
+    const scriptId = 'google-identity-services';
+    const initGoogle = () => {
+      if (!window.google?.accounts?.id || !googleBtnRef.current) return;
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: (response) => handleGoogleCredential(response.credential),
+      });
+
+      googleBtnRef.current.innerHTML = '';
+      window.google.accounts.id.renderButton(googleBtnRef.current, {
+        theme: 'outline',
+        size: 'large',
+        width: 380,
+        text: 'signin_with',
+        shape: 'pill',
+      });
+    };
+
+    if (window.google?.accounts?.id) {
+      initGoogle();
+      return;
+    }
+
+    const existing = document.getElementById(scriptId);
+    if (existing) {
+      existing.addEventListener('load', initGoogle, { once: true });
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.id = scriptId;
+    script.async = true;
+    script.defer = true;
+    script.onload = initGoogle;
+    document.head.appendChild(script);
+  }, [googleClientId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
       const { data } = await apiLogin(form);
-      login(data.data, data.token);
-      toast.success(`Welcome back, ${data.data.name}! 👋`);
-      const redirects = { student: '/student/dashboard', mentor: '/mentor/dashboard', admin: '/admin/dashboard', employer: '/employer/dashboard' };
-      navigate(redirects[data.data.role] || '/');
+      completeLogin(data);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Login failed');
+      const apiMessage = err.response?.data?.message;
+      if (apiMessage && apiMessage.toLowerCase().includes('token')) {
+        toast.error('Incorrect email or password');
+      } else {
+        toast.error(apiMessage || 'Login failed');
+      }
     } finally {
       setLoading(false);
     }
@@ -162,6 +228,29 @@ const Login = () => {
                 <> Sign In <ArrowRight size={18} /> </>
               )}
             </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ height: 1, flex: 1, background: '#e5e7eb' }} />
+              <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>or</span>
+              <div style={{ height: 1, flex: 1, background: '#e5e7eb' }} />
+            </div>
+
+            <div style={{ minHeight: 42, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {googleClientId ? (
+                <div ref={googleBtnRef} style={{ width: '100%', display: 'flex', justifyContent: 'center' }} />
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  style={{ width: '100%', padding: '12px 16px', borderRadius: 50, border: '1px solid #e5e7eb', background: '#f9fafb', color: '#9ca3af', fontWeight: 600, cursor: 'not-allowed' }}
+                >
+                  Google Sign-In not configured
+                </button>
+              )}
+            </div>
+            {googleLoading && (
+              <p style={{ fontSize: 12, color: '#6b7280', textAlign: 'center' }}>Signing in with Google...</p>
+            )}
           </form>
 
           {/* Demo Credentials */}

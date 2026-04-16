@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createJob, getEmployerJobs, getAllOpenJobs, applyForJob, getJobApplications, updateApplicationStatus, getStudentApplications, sendJobOffer, respondToOffer, finalizeHire, advanceApplicationStage, getPipelineStats } = require('../controllers/jobController');
+const { createJob, getEmployerJobs, getAllOpenJobs, applyForJob, getJobApplications, updateApplicationStatus, getStudentApplications, sendJobOffer, respondToOffer, finalizeHire, advanceApplicationStage, getPipelineStats, markInterviewJoined } = require('../controllers/jobController');
 const { protect } = require('../middleware/authMiddleware');
 const { authorizeRoles } = require('../middleware/roleMiddleware');
 
@@ -12,6 +12,7 @@ router.patch('/applications/:id', protect, authorizeRoles('employer'), updateApp
 router.patch('/applications/:id/advance', protect, authorizeRoles('employer'), advanceApplicationStage);
 router.patch('/applications/:id/offer', protect, authorizeRoles('employer'), sendJobOffer);
 router.patch('/applications/:id/hire', protect, authorizeRoles('employer'), finalizeHire);
+router.patch('/applications/:id/interview-join', protect, authorizeRoles('student', 'employer'), markInterviewJoined);
 router.get('/pipeline-stats', protect, authorizeRoles('employer'), getPipelineStats);
 
 router.get('/', protect, getAllOpenJobs);

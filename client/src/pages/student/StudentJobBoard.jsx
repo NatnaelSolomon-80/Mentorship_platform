@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import DashboardLayout from '../../components/DashboardLayout';
 import PageHeader from '../../components/PageHeader';
-import { apiGetAllJobs, apiApplyForJob, apiUploadFile, apiGetStudentApplications, apiRespondToOffer } from '../../api';
-import { Briefcase, MapPin, DollarSign, Send, X, Loader2, FileText, Link as LinkIcon, CheckCircle, UploadCloud, UserCircle2, Calendar, Clock, XCircle, Code, Video, PlayCircle, Users } from 'lucide-react';
+import { apiGetAllJobs, apiApplyForJob, apiUploadFile, apiGetStudentApplications, apiRespondToOffer, apiMarkInterviewJoined } from '../../api';
+import { Briefcase, MapPin, DollarSign, Send, X, Loader2, FileText, Link as LinkIcon, CheckCircle, UploadCloud, UserCircle2, Calendar, Clock, XCircle, Code, Video, PlayCircle, Users, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -32,10 +32,62 @@ const StudentJobBoard = () => {
 
   // Consent checkbox states (mapped by application ID)
   const [consentCheckedMap, setConsentCheckedMap] = useState({});
+  const [nowTs, setNowTs] = useState(Date.now());
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const getInterviewStartDateTime = (stageTracking) => {
+    if (!stageTracking?.interviewDate || !stageTracking?.interviewTime) return null;
+    const date = new Date(stageTracking.interviewDate);
+    if (Number.isNaN(date.getTime())) return null;
+
+    const [hourString, minuteString] = String(stageTracking.interviewTime).split(':');
+    const hour = Number(hourString || 0);
+    const minute = Number(minuteString || 0);
+
+    return new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      Number.isNaN(hour) ? 0 : hour,
+      Number.isNaN(minute) ? 0 : minute,
+      0,
+      0
+    );
+  };
+
+  const isInterviewRedAlertActive = (stageTracking) => {
+    const start = getInterviewStartDateTime(stageTracking);
+    if (!start) return false;
+    if (stageTracking?.studentJoinedAt) return false;
+
+    const startMs = start.getTime();
+    const alertEndMs = startMs + 3 * 60 * 1000;
+    return nowTs >= startMs && nowTs <= alertEndMs;
+  };
+
+  const handleJoinInterview = async (application) => {
+    try {
+      const res = await apiMarkInterviewJoined(application._id);
+      const updatedStageTracking = res?.data?.data?.stageTracking;
+      if (updatedStageTracking) {
+        setMyApplications(prev => prev.map(app => (
+          app._id === application._id ? { ...app, stageTracking: updatedStageTracking } : app
+        )));
+      }
+    } catch (error) {
+      toast.error('Could not record interview join status');
+    } finally {
+      navigate(`/interview/${application.stageTracking?.interviewRoomId}`);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -360,6 +412,11 @@ const StudentJobBoard = () => {
 
                   {app.status === 'interview_scheduled' && app.stageTracking && (
                     <div style={{ background: '#fdf2f8', borderRadius: 16, padding: 20, border: '1px solid #fbcfe8', marginTop: 'auto' }}>
+                      {isInterviewRedAlertActive(app.stageTracking) && (
+                        <div style={{ background: '#fee2e2', border: '2px solid #ef4444', borderRadius: 10, padding: '10px 12px', color: '#991b1b', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                          <AlertTriangle size={16} /> LIVE NOW: Interview started. Join within 3 minutes.
+                        </div>
+                      )}
                       <p style={{ fontSize: 12, fontWeight: 800, color: '#be185d', margin: '0 0 12px', textTransform: 'uppercase' }}>Live Interview Set</p>
                       <p style={{ fontSize: 14, fontWeight: 800, color: '#831843', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Calendar size={16} /> {new Date(app.stageTracking.interviewDate).toLocaleDateString()} at {app.stageTracking.interviewTime}
@@ -367,7 +424,7 @@ const StudentJobBoard = () => {
                       <p style={{ fontSize: 13, color: '#9d174d', margin: '0 0 16px' }}>Be prepared to join the secure video room precisely at the targeted time.</p>
                       
                       {app.stageTracking.interviewRoomId && (
-                        <button onClick={() => navigate(`/interview/${app.stageTracking.interviewRoomId}`)} style={{ width: '100%', background: '#db2777', color: '#fff', padding: '12px 16px', borderRadius: 10, fontSize: 14, fontWeight: 800, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 14px rgba(219,39,119,0.3)' }}>
+                        <button onClick={() => handleJoinInterview(app)} style={{ width: '100%', background: '#db2777', color: '#fff', padding: '12px 16px', borderRadius: 10, fontSize: 14, fontWeight: 800, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 14px rgba(219,39,119,0.3)' }}>
                           <Video size={18} /> Join Video Interview
                         </button>
                       )}
