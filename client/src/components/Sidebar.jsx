@@ -68,11 +68,13 @@ const Sidebar = ({ unreadMessageCount = 0 }) => {
 
   return (
     <aside style={{
-      width: 240, minHeight: '100vh',
+      width: 240, height: '100vh',
       background: 'linear-gradient(180deg, #1a2e24 0%, #1c3528 100%)',
       borderRight: '1px solid rgba(255,255,255,0.06)',
       display: 'flex', flexDirection: 'column',
       padding: '20px 0', flexShrink: 0,
+      position: 'sticky', top: 0,
+      overflow: 'hidden',
     }}>
       {/* Logo */}
       <div style={{ padding: '0 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: 8 }}>
@@ -124,7 +126,7 @@ const Sidebar = ({ unreadMessageCount = 0 }) => {
       </p>
 
       {/* Nav links */}
-      <nav style={{ flex: 1, padding: '0 10px' }}>
+      <nav style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 10px' }}>
         {links.map(({ to, icon: Icon, label }) => {
           const isDashboard = label === 'Dashboard';
           const isLocked = !user?.isApproved && !isDashboard;
