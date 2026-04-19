@@ -664,11 +664,12 @@ const Footer = () => (
       <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
         <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>© 2026 SkillBridge Ethiopia.</p>
         <div style={{ display: 'flex', gap: 16 }}>
-          {['Privacy Policy', 'Terms of Service'].map(item => (
-            <a key={item} href="#" style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', textDecoration: 'none', transition: 'color 0.2s' }}
-              onMouseEnter={e => e.target.style.color = 'rgba(255,255,255,0.6)'}
-              onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.3)'}>{item}</a>
-          ))}
+          <Link to="/privacy" style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', textDecoration: 'none', transition: 'color 0.2s' }}
+            onMouseEnter={e => e.target.style.color = 'rgba(255,255,255,0.6)'}
+            onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.3)'}>Privacy Policy</Link>
+          <Link to="/terms" style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', textDecoration: 'none', transition: 'color 0.2s' }}
+            onMouseEnter={e => e.target.style.color = 'rgba(255,255,255,0.6)'}
+            onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.3)'}>Terms of Service</Link>
         </div>
       </div>
     </div>

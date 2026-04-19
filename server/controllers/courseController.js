@@ -1,6 +1,7 @@
 const Course = require('../models/Course');
 const Module = require('../models/Module');
 const Enrollment = require('../models/Enrollment');
+const notifyAdmins = require('../utils/notifyAdmins');
 
 // @desc   Get all approved courses (public / student browse)
 // @route  GET /api/courses
@@ -65,6 +66,14 @@ const createCourse = async (req, res) => {
       mentorId: req.user._id,
       isApproved: false,
     });
+
+    await notifyAdmins({
+      type: 'general',
+      title: 'New Course Submission',
+      message: `A new course "${title}" has been submitted for approval by ${req.user.name}.`,
+      link: '/admin/courses'
+    });
+
     res.status(201).json({ success: true, data: course });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

@@ -10,7 +10,7 @@ const connectDB = async () => {
 const seedAdmin = async () => {
   await connectDB();
 
-  const adminEmail = 'admin@skillbridge.et'; // change this anytime
+  const adminEmail = 'admin@gmail.com'; // change this anytime
   const adminPassword = '12121212'; // change this anytime
 
   const hashedPassword = await bcrypt.hash(adminPassword, 10);

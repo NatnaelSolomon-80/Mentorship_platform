@@ -8,6 +8,8 @@ import LandingPage from './pages/LandingPage';
 import FAQPage from './pages/FAQPage';
 import ContactUsPage from './pages/ContactUsPage';
 import HelpDeskPage from './pages/HelpDeskPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import TermsOfServicePage from './pages/TermsOfServicePage';
 
 // Auth
 import Login from './pages/auth/Login';
@@ -70,6 +72,8 @@ function App() {
           <Route path="/faq" element={<FAQPage />} />
           <Route path="/contact-us" element={<ContactUsPage />} />
           <Route path="/help-desk" element={<HelpDeskPage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsOfServicePage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />

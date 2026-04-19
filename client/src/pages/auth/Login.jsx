@@ -210,7 +210,7 @@ const Login = () => {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <label style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Password</label>
-                <Link to="/forgot-password" style={{ fontSize: 12, color: '#2d6a4f', textDecoration: 'none', fontWeight: 500 }}>Forgot password?</Link>
+                <Link to="/forgot-password" state={{ email: form.email }} style={{ fontSize: 12, color: '#2d6a4f', textDecoration: 'none', fontWeight: 500 }}>Forgot password?</Link>
               </div>
               <div style={{ position: 'relative' }}>
                 <input
@@ -285,10 +285,10 @@ const Login = () => {
           }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: '#2d6a4f', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 8 }}>Demo Admin Credentials</p>
             <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 4 }}>
-              Email: <span style={{ fontWeight: 600, color: '#1a2e24' }}>admin@skillbridge.et</span>
+              Email: <span style={{ fontWeight: 600, color: '#1a2e24' }}>admin@gmail.com</span>
             </p>
             <p style={{ fontSize: 13, color: '#6b7280' }}>
-              Password: <span style={{ fontWeight: 600, color: '#1a2e24' }}>Admin@123</span>
+              Password: <span style={{ fontWeight: 600, color: '#1a2e24' }}>12121212</span>
             </p>
           </div>
         </div>

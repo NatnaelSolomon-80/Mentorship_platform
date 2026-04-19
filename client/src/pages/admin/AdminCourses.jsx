@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import DashboardLayout from '../../components/DashboardLayout';
 import PageHeader from '../../components/PageHeader';
+import Modal from '../../components/Modal';
 import { apiGetCourses, apiGetCourse, apiApproveCourse, apiRejectCourse, apiDeleteCourse } from '../../api';
 import toast from 'react-hot-toast';
 import { BookOpen, Check, X, Trash2, Search, Layers, Clock, User, Eye, ExternalLink, Play, FileText, Link as LinkIcon } from 'lucide-react';
@@ -22,6 +23,7 @@ const AdminCourses = () => {
   const [actioning, setActioning] = useState(null);
   const [viewingCourse, setViewingCourse] = useState(null);
   const [viewLoading, setViewLoading] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   useEffect(() => { load(); }, []);
 
@@ -48,9 +50,9 @@ const AdminCourses = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this course permanently?')) return;
     try { await apiDeleteCourse(id); toast.success('Course deleted'); await load(); }
-    catch { toast.error('Failed'); }
+    catch { toast.error('Failed to delete course'); }
+    finally { setConfirmDelete(null); }
   };
 
   const openCourseView = async (id) => {
@@ -190,7 +192,7 @@ const AdminCourses = () => {
                   <X size={14} /> Revoke
                 </button>
               )}
-              <button onClick={() => handleDelete(course._id)}
+              <button onClick={() => setConfirmDelete({ id: course._id, title: course.title })}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d1d5db', padding: 8, borderRadius: 8, transition: 'all 0.2s' }}
                 onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
                 onMouseLeave={e => e.currentTarget.style.color = '#d1d5db'}>
@@ -289,6 +291,27 @@ const AdminCourses = () => {
         <div style={{ position: 'fixed', right: 24, top: 20, background: '#111827', color: '#fff', borderRadius: 12, padding: '10px 14px', zIndex: 80, boxShadow: '0 10px 24px rgba(0,0,0,0.2)', fontSize: 13, fontWeight: 600 }}>
           Loading course content...
         </div>
+      )}
+
+      {/* ─── Delete Confirmation Modal ─── */}
+      {confirmDelete && (
+        <Modal title="Delete Course" onClose={() => setConfirmDelete(null)}>
+          <div style={{ textAlign: 'center', padding: '10px 0 20px 0' }}>
+            <div style={{ width: 60, height: 60, borderRadius: '50%', background: '#fef2f2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <Trash2 size={30} />
+            </div>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#1a2e24', margin: '0 0 8px 0' }}>Are you sure?</h3>
+            <p style={{ fontSize: 14, color: '#6b7280', margin: 0, lineHeight: 1.5 }}>
+              You are about to permanently delete the course <strong>"{confirmDelete.title}"</strong>. This action cannot be undone.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button type="button" onClick={() => setConfirmDelete(null)} style={{ flex: 1, padding: '10px 0', border: '1px solid #d1d5db', background: '#fff', color: '#374151', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+            <button type="button" onClick={() => handleDelete(confirmDelete.id)} style={{ flex: 1, padding: '10px 0', border: 'none', background: '#ef4444', color: '#fff', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+              Yes, Delete
+            </button>
+          </div>
+        </Modal>
       )}
     </DashboardLayout>
   );

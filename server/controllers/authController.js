@@ -3,6 +3,7 @@ const generateToken = require('../utils/generateToken');
 const { OAuth2Client } = require('google-auth-library');
 const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
+const notifyAdmins = require('../utils/notifyAdmins');
 
 const buildAuthPayload = (user) => ({
   _id: user._id,
@@ -35,6 +36,15 @@ const register = async (req, res) => {
     }
 
     const user = await User.create({ name, email, password, role });
+
+    if (role === 'mentor' || role === 'employer') {
+      await notifyAdmins({
+        type: 'general',
+        title: `New ${role === 'mentor' ? 'Mentor' : 'Employer'} Registration`,
+        message: `${name} has registered and is awaiting approval.`,
+        link: '/admin/users'
+      });
+    }
 
     // Issue a token for ALL roles so everyone can access their dashboard.
     // isApproved=false for mentors/employers — the dashboard shows a pending banner.
@@ -212,11 +222,15 @@ const forgotPassword = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email is required' });
     }
 
-    const genericMessage = 'If an account with this email exists, a reset link has been sent.';
     const user = await User.findOne({ email: String(email).toLowerCase().trim() });
 
     if (!user) {
-      return res.json({ success: true, message: genericMessage });
+      return res.status(404).json({ success: false, message: 'No account found with this email address. Please check your email and try again.' });
+    }
+
+    // Check if user account is blocked
+    if (user.isBlocked) {
+      return res.status(403).json({ success: false, message: 'This account has been blocked. Please contact support.' });
     }
 
     const rawToken = user.createPasswordResetToken();
@@ -240,8 +254,9 @@ const forgotPassword = async (req, res) => {
       html,
     });
 
-    res.json({ success: true, message: genericMessage });
+    res.json({ success: true, message: `Password reset link has been sent to ${user.email}. Please check your inbox.` });
   } catch (error) {
+    console.error('❌ Forgot password error:', error.message, error);
     // If mail send fails, invalidate any generated reset token for safety.
     if (req.body?.email) {
       const existingUser = await User.findOne({ email: String(req.body.email).toLowerCase().trim() });

@@ -13,6 +13,7 @@ const AdminBadges = () => {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ title: '', description: '', icon: '🏅', color: '#f59e0b' });
   const [submitting, setSubmitting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   useEffect(() => { load(); }, []);
 
@@ -45,12 +46,12 @@ const AdminBadges = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this badge?')) return;
     try {
       await apiDeleteBadge(id);
       toast.success('Badge deleted');
       await load();
-    } catch { toast.error('Failed'); }
+    } catch { toast.error('Failed to delete badge'); }
+    finally { setConfirmDelete(null); }
   };
 
   if (loading) return <DashboardLayout><div className="flex justify-center py-20"><div className="spinner" /></div></DashboardLayout>;
@@ -81,7 +82,7 @@ const AdminBadges = () => {
                 <button onClick={() => openEdit(badge)} className="p-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300">
                   <Edit size={13} />
                 </button>
-                <button onClick={() => handleDelete(badge._id)} className="p-1.5 rounded-lg bg-slate-700 hover:bg-red-900/50 text-red-400">
+                <button onClick={() => setConfirmDelete({ id: badge._id, title: badge.title })} className="p-1.5 rounded-lg bg-slate-700 hover:bg-red-900/50 text-red-400">
                   <Trash2 size={13} />
                 </button>
               </div>
@@ -110,6 +111,27 @@ const AdminBadges = () => {
               <button type="submit" className="btn-primary flex-1" disabled={submitting}>{submitting ? 'Saving...' : 'Save Badge'}</button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* ─── Delete Confirmation Modal ─── */}
+      {confirmDelete && (
+        <Modal title="Delete Badge" onClose={() => setConfirmDelete(null)}>
+          <div style={{ textAlign: 'center', padding: '10px 0 20px 0' }}>
+            <div style={{ width: 60, height: 60, borderRadius: '50%', background: '#fef2f2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <Trash2 size={30} />
+            </div>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#1a2e24', margin: '0 0 8px 0' }}>Are you sure?</h3>
+            <p style={{ fontSize: 14, color: '#6b7280', margin: 0, lineHeight: 1.5 }}>
+              You are about to permanently delete the badge <strong>"{confirmDelete.title}"</strong>. This action cannot be undone.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button type="button" onClick={() => setConfirmDelete(null)} style={{ flex: 1, padding: '10px 0', border: '1px solid #d1d5db', background: '#fff', color: '#374151', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+            <button type="button" onClick={() => handleDelete(confirmDelete.id)} style={{ flex: 1, padding: '10px 0', border: 'none', background: '#ef4444', color: '#fff', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+              Yes, Delete
+            </button>
+          </div>
         </Modal>
       )}
     </DashboardLayout>

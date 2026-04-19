@@ -2,6 +2,7 @@ const Module = require('../models/Module');
 const Course = require('../models/Course');
 const Enrollment = require('../models/Enrollment');
 const { createNotification } = require('./notificationController');
+const notifyAdmins = require('../utils/notifyAdmins');
 
 // @desc   Get modules for a course
 // @route  GET /api/modules/course/:courseId
@@ -49,6 +50,14 @@ const createModule = async (req, res) => {
     } catch (notifErr) {
       console.error('Module notification failed:', notifErr.message);
     }
+
+    // ── Notify Admins ──
+    await notifyAdmins({
+      type: 'general',
+      title: 'New Module Content Added',
+      message: `Mentor ${req.user.name} added a new module "${title}" to the course "${course.title}". Please review it.`,
+      link: '/admin/courses'
+    });
 
     res.status(201).json({ success: true, data: module });
   } catch (error) {

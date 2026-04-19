@@ -3,6 +3,7 @@ const Module = require('../models/Module');
 const Course = require('../models/Course');
 const Enrollment = require('../models/Enrollment');
 const { createNotification } = require('./notificationController');
+const notifyAdmins = require('../utils/notifyAdmins');
 
 // @desc   Get lessons for a module
 // @route  GET /api/lessons/module/:moduleId
@@ -47,6 +48,15 @@ const createLesson = async (req, res) => {
     } catch (notifErr) {
       console.error('Lesson notification failed:', notifErr.message);
     }
+
+    // ── Notify Admins ──
+    const course = await Course.findById(module.courseId).select('title');
+    await notifyAdmins({
+      type: 'general',
+      title: 'New Lesson Content Added',
+      message: `Mentor ${req.user.name} added a new lesson "${title}" to the module "${module.title}" in course "${course?.title || 'Unknown Course'}". Please review it.`,
+      link: '/admin/courses'
+    });
 
     res.status(201).json({ success: true, data: lesson });
   } catch (error) {
